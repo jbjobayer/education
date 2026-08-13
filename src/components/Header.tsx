@@ -61,18 +61,18 @@ export const Header: React.FC = () => {
           )}
           <div 
             onClick={() => setActiveTab('home')}
-            className="cursor-pointer select-none"
+            className="cursor-pointer select-none min-w-0"
           >
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <h1 className="font-extrabold text-lg sm:text-2xl text-[#0a2e23] dark:text-emerald-400 tracking-tight leading-none">
+              <h1 className="font-extrabold text-base sm:text-2xl text-[#0a2e23] dark:text-emerald-400 tracking-tight leading-none">
                 আত-তামরীন
               </h1>
-              <span className="text-[10px] sm:text-[11px] font-black bg-[#004d2e] dark:bg-[#064e3b] text-[#fbbf24] px-2 py-0.5 rounded-full tracking-wide shadow-inner border border-[#00663d]/40">
+              <span className="text-[9.5px] sm:text-[11px] font-black bg-[#004d2e] dark:bg-[#064e3b] text-[#fbbf24] px-1.5 sm:px-2 py-0.5 rounded-full tracking-wide shadow-inner border border-[#00663d]/40">
                 একাডেমি
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-[#4b5563] dark:text-slate-400 font-medium tracking-normal mt-0.5 hidden xs:block">
-              মাদ্রাসা ও NTRCA শিক্ষক নিবন্ধন প্রস্তুতি
+            <p className="text-[10.5px] sm:text-[12px] text-slate-500 dark:text-slate-400 font-medium tracking-normal mt-0.5 leading-tight">
+              প্রস্তুতি হোক আরও স্মার্ট
             </p>
           </div>
         </div>
