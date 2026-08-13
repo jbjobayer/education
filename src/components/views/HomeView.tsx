@@ -20,6 +20,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { mockBannerSlides, mockExams, mockCourses, mockRoutines } from '../../data/mockData';
+import { CourseCard } from '../CourseCard';
 
 export const HomeView: React.FC = () => {
   const { 
@@ -29,7 +30,8 @@ export const HomeView: React.FC = () => {
     setIsRoutineOpen, 
     setIsNotificationOpen,
     searchQuery,
-    setSelectedCategory
+    setSelectedCategory,
+    enrolledCourseIds
   } = useApp();
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -251,81 +253,15 @@ export const HomeView: React.FC = () => {
           </button>
         </div>
 
-        {/* Neumorphic Course Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Course Cards */}
+        <div className="space-y-3.5">
           {displayedCourses.slice(0, 4).map((course) => (
-            <div
+            <CourseCard
               key={course.id}
-              onClick={() => setSelectedCourseDetails(course)}
-              className="p-3.5 rounded-3xl neu-card-hover cursor-pointer flex flex-col justify-between h-full group"
-            >
-              <div className="flex-1 flex flex-col">
-                {/* Course Image Plate */}
-                <div className="relative h-44 overflow-hidden rounded-2xl bg-slate-200 shadow-inner">
-                  <img
-                    src={course.coverImage}
-                    alt={course.title}
-                    className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-                  
-                  {course.badge && (
-                    <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-lg bg-amber-400 text-slate-950 text-[11px] font-black shadow-md">
-                      {course.badge}
-                    </span>
-                  )}
-
-                  <span className="absolute bottom-2.5 left-3 text-xs font-bold text-white flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {course.rating} ({course.totalStudents}+ শিক্ষার্থী)
-                  </span>
-                </div>
-
-                <div className="p-2.5 pt-3.5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h4 className="font-extrabold text-sm sm:text-base text-slate-900 group-hover:text-emerald-800 transition-colors leading-snug line-clamp-1">
-                      {course.title}
-                    </h4>
-                    <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed font-normal">
-                      {course.description}
-                    </p>
-                  </div>
-
-                  {/* Specs in Inset Tray */}
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-slate-600 neu-inset p-2 rounded-xl text-center font-medium">
-                    <span className="flex items-center justify-center gap-1">
-                      <Video className="w-3.5 h-3.5 text-emerald-700" /> {course.totalClasses}টি ক্লাস
-                    </span>
-                    <span className="flex items-center justify-center gap-1">
-                      <FileCheck2 className="w-3.5 h-3.5 text-emerald-700" /> {course.totalExams}টি এক্সাম
-                    </span>
-                    <span className="flex items-center justify-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-emerald-700" /> {course.duration}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Bottom Bar */}
-              <div className="p-2.5 pt-2.5 flex items-center justify-between gap-2 border-t border-white/60 mt-2">
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-semibold">কোর্স ফি</span>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-base sm:text-lg font-black text-emerald-900">৳{course.price}</span>
-                    <span className="text-xs text-slate-400 line-through">৳{course.originalPrice}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCourseDetails(course);
-                  }}
-                  className="px-4 py-2 rounded-xl neu-btn-primary font-bold text-xs flex items-center gap-1"
-                >
-                  বিস্তারিত দেখুন
-                </button>
-              </div>
-            </div>
+              course={course}
+              isEnrolled={enrolledCourseIds.includes(course.id)}
+              onSelect={(selected) => setSelectedCourseDetails(selected)}
+            />
           ))}
         </div>
       </div>

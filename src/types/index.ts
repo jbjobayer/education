@@ -17,9 +17,12 @@ export interface Course {
   price: number;
   originalPrice: number;
   badge?: string;
+  batchType?: string; // e.g. 'রেকর্ড ব্যাচ', 'ফ্রি এক্সাম ব্যাচ', 'লাইভ ব্যাচ'
+  shortTag?: string; // e.g. 'সহকারী মৌলভী...', 'আরবি প্রভাষক...'
   rating: number;
   totalStudents: number;
   totalClasses: number;
+  totalSheets?: number;
   totalExams: number;
   duration: string;
   startDate: string;
