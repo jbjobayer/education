@@ -253,16 +253,19 @@ export const HomeView: React.FC = () => {
           </button>
         </div>
 
-        {/* Course Cards */}
-        <div className="space-y-3.5">
-          {displayedCourses.slice(0, 4).map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              isEnrolled={enrolledCourseIds.includes(course.id)}
-              onSelect={(selected) => setSelectedCourseDetails(selected)}
-            />
-          ))}
+        {/* Neumorphic Course Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {displayedCourses.slice(0, 4).map((course) => {
+            const isEnrolled = enrolledCourseIds.includes(course.id);
+            return (
+              <CourseCard
+                key={course.id}
+                course={course}
+                isEnrolled={isEnrolled}
+                onClick={() => setSelectedCourseDetails(course)}
+              />
+            );
+          })}
         </div>
       </div>
 

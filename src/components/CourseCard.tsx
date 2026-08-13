@@ -1,130 +1,134 @@
 import React from 'react';
-import { Course } from '../types';
 import { 
+  Landmark, 
   Clock, 
   FileText, 
   CheckCircle2, 
-  Users, 
-  Landmark, 
   Play, 
+  Users,
   Check
 } from 'lucide-react';
+import { Course } from '../types';
 
 interface CourseCardProps {
   course: Course;
-  isEnrolled: boolean;
-  onSelect: (course: Course) => void;
+  isEnrolled?: boolean;
+  onClick: () => void;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
   course,
-  isEnrolled,
-  onSelect,
+  isEnrolled = false,
+  onClick,
 }) => {
-  // Determine styling based on enrolled or batch type
-  const isEnrolledStyle = isEnrolled;
-  const isGreenTheme = isEnrolledStyle;
+  // Convert number to Bengali for price
+  const toBn = (num: number | string) => {
+    return String(num).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[+d]);
+  };
+
+  const isGreenTheme = isEnrolled;
+  const batchLabel = course.batchType || course.badge || 'রেকর্ড ব্যাচ';
+  const tagLabel = course.shortTag || course.title.slice(0, 12) + '...';
 
   return (
     <div
-      onClick={() => onSelect(course)}
-      className="bg-white rounded-3xl p-3.5 sm:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-100/90 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 sm:gap-4 hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all cursor-pointer group"
+      onClick={onClick}
+      className="rounded-3xl bg-[#e9edf5] shadow-[4px_4px_12px_rgba(195,207,226,0.85),-4px_-4px_12px_rgba(255,255,255,0.95)] border border-white/60 p-3 sm:p-4 cursor-pointer hover:shadow-[2px_2px_6px_rgba(195,207,226,0.7),-2px_-2px_6px_rgba(255,255,255,0.9)] transition-all active:scale-[0.99] flex items-center gap-3 sm:gap-4 select-none group"
     >
-      {/* Left Icon Aspect Container (Exact match to screenshot) */}
+      {/* Left Plate */}
       <div
-        className={`rounded-2xl w-full sm:w-28 p-2.5 sm:p-3 flex flex-row sm:flex-col items-center justify-between sm:justify-center shrink-0 text-center gap-2 transition-transform group-hover:scale-[1.02] ${
+        className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex flex-col items-center justify-center p-2 text-center shrink-0 shadow-xs transition-transform group-hover:scale-102 ${
           isGreenTheme
-            ? 'bg-[#e8f6f0] border border-[#c4ebdc]'
-            : 'bg-[#fffbf0] border border-[#fde8bb]'
+            ? 'bg-[#e6f7ef] border border-[#a7f3d0]'
+            : 'bg-[#fef9c3]/75 border border-[#fde047]'
         }`}
       >
-        <div className="flex items-center sm:flex-col gap-2 sm:gap-2">
-          {/* Circular Badge Icon */}
-          <div
-            className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xs shrink-0 ${
-              isGreenTheme
-                ? 'bg-[#084b2c] text-amber-300'
-                : 'bg-[#0b1c3d] text-amber-300'
-            }`}
-          >
-            <Landmark className="w-5 h-5" />
-          </div>
-
-          {/* Pill Badge */}
-          <span
-            className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-xs ${
-              isGreenTheme
-                ? 'bg-[#084b2c] text-white'
-                : 'bg-[#0b1c3d] text-white'
-            }`}
-          >
-            {course.batchType || course.badge || 'রেকর্ড ব্যাচ'}
-          </span>
-        </div>
-
-        {/* Short category tag underneath */}
-        <span
-          className={`text-[10.5px] font-bold truncate max-w-[120px] sm:max-w-full ${
-            isGreenTheme ? 'text-[#087f47]' : 'text-slate-600'
+        {/* Top Circle with Building Icon */}
+        <div
+          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-xs shrink-0 ${
+            isGreenTheme
+              ? 'bg-[#005a36] text-emerald-100'
+              : 'bg-[#0f172a] text-amber-400'
           }`}
         >
-          {course.shortTag || course.subtitle.split(' ')[0] + '...'}
+          <Landmark className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+        </div>
+
+        {/* Middle Badge */}
+        <div
+          className={`text-[9.5px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md mt-1.5 whitespace-nowrap shadow-2xs leading-tight ${
+            isGreenTheme
+              ? 'bg-[#005a36] text-white'
+              : 'bg-[#0f172a] text-white'
+          }`}
+        >
+          {batchLabel}
+        </div>
+
+        {/* Bottom Short Title */}
+        <span
+          className={`text-[9.5px] sm:text-[10px] font-bold truncate max-w-[82px] sm:max-w-[95px] mt-1 leading-none ${
+            isGreenTheme ? 'text-[#005a36]' : 'text-slate-800'
+          }`}
+        >
+          {tagLabel}
         </span>
       </div>
 
       {/* Right Content Area */}
-      <div className="flex-1 flex flex-col justify-between min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 h-full">
         <div>
-          {/* Title */}
-          <h3 className="font-black text-sm sm:text-base text-slate-900 group-hover:text-emerald-900 transition-colors leading-snug">
+          {/* Course Title */}
+          <h3 className="font-extrabold text-sm sm:text-base text-[#111827] group-hover:text-emerald-900 transition-colors leading-tight line-clamp-1">
             {course.title}
           </h3>
 
-          {/* Enrolled Students Tag (shown on non-enrolled cards like in screenshot) */}
+          {/* Student Count Badge (Shown if not enrolled or if has students count) */}
           {!isEnrolled && (
-            <div className="mt-1.5 mb-1">
-              <span className="bg-[#f0ebfa] text-[#6b3fc5] text-[11px] font-black px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 border border-[#e2d5f8]">
-                <Users className="w-3.5 h-3.5" />
+            <div className="mt-1">
+              <span className="inline-flex items-center gap-1 bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff] px-2.5 py-0.5 rounded-full text-[10.5px] sm:text-[11px] font-bold leading-none">
+                <Users className="w-3 h-3 stroke-[2.4]" />
                 <span>{course.totalStudents} জন ভর্তি</span>
               </span>
             </div>
           )}
 
-          {/* Stats / Specs row: Clock / Sheet / Exam icons */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-bold my-2">
-            <span className="flex items-center gap-1">
+          {/* Meta Info Row: Classes, Sheets, Exams */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-[#4b5563] font-medium mt-1.5">
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
               <span>{course.totalClasses} ক্লাস</span>
             </span>
-            <span className="flex items-center gap-1">
+
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <FileText className="w-3.5 h-3.5 text-slate-500" />
               <span>{course.totalSheets || course.totalClasses} শিট</span>
             </span>
-            <span className="flex items-center gap-1">
+
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
               <span>{course.totalExams} পরীক্ষা</span>
             </span>
           </div>
         </div>
 
-        {/* Bottom Action Row (Exact match to screenshot) */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80 mt-1">
+        {/* Bottom Action Row */}
+        <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-slate-200/50">
           {isEnrolled ? (
             <>
-              {/* Enrolled Badge Button */}
-              <div className="bg-[#e6f8ef] text-[#087f47] border border-[#a2e5c2] px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 shadow-xs">
+              {/* Enrolled Status Pill */}
+              <span className="bg-[#e6f7ef] text-[#059669] border border-[#a7f3d0] px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-xs">
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
                 <span>ভর্তি সম্পন্ন</span>
-              </div>
+              </span>
 
-              {/* Enter Course Button */}
+              {/* Enter Button */}
               <button
-                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelect(course);
+                  onClick();
                 }}
-                className="bg-[#075e38] hover:bg-[#064e2e] text-white px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                className="bg-[#005a36] text-white px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm hover:bg-[#004d2e] active:scale-95 transition-all cursor-pointer"
               >
                 <Play className="w-3 h-3 fill-current" />
                 <span>প্রবেশ করুন</span>
@@ -132,26 +136,25 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </>
           ) : (
             <>
-              {/* Price */}
+              {/* Price in Bengali */}
               <div className="flex items-baseline gap-1">
-                <span className="font-extrabold text-sm sm:text-base text-slate-900">
-                  ৳{course.price}
+                <span className="text-base sm:text-lg font-black text-[#111827]">
+                  ৳{toBn(course.price)}
                 </span>
                 {course.originalPrice > course.price && (
                   <span className="text-[11px] text-slate-400 line-through">
-                    ৳{course.originalPrice}
+                    ৳{toBn(course.originalPrice)}
                   </span>
                 )}
               </div>
 
               {/* Details Button */}
               <button
-                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelect(course);
+                  onClick();
                 }}
-                className="bg-[#0b1b38] hover:bg-slate-900 text-white px-5 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm active:scale-95"
+                className="bg-[#0f172a] text-white px-4 sm:px-5 py-1.5 rounded-full text-xs font-bold hover:bg-slate-800 active:scale-95 transition-all shadow-sm cursor-pointer"
               >
                 বিস্তারিত
               </button>

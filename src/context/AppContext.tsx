@@ -1,16 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MainTab, CourseCategory, Course, Exam, ExamResult, Notice, RoutineItem } from '../types';
+import { Course, CourseCategory, Exam, ExamResult, MainTab, Notice, RoutineItem, UserProfile } from '../types';
 import { mockCourses, mockExams, mockNotices, mockRoutines } from '../data/mockData';
-
-interface UserProfile {
-  name: string;
-  phone: string;
-  email: string;
-  rollNo: string;
-  institution: string;
-  targetExam: string;
-  avatar: string;
-}
 
 interface AppContextType {
   activeTab: MainTab;
@@ -18,30 +8,31 @@ interface AppContextType {
   selectedCategory: CourseCategory;
   setSelectedCategory: (cat: CourseCategory) => void;
   courses: Course[];
+  exams: Exam[];
+  notices: Notice[];
+  routines: RoutineItem[];
   enrolledCourseIds: string[];
   enrollInCourse: (courseId: string, paymentMethod?: string) => void;
-  activeExam: Exam | null;
-  startExam: (exam: Exam) => void;
-  closeExam: () => void;
-  examResults: ExamResult[];
-  saveExamResult: (result: ExamResult) => void;
   selectedCourseDetails: Course | null;
   setSelectedCourseDetails: (course: Course | null) => void;
   checkoutCourse: Course | null;
   setCheckoutCourse: (course: Course | null) => void;
+  activeExam: Exam | null;
+  startExam: (exam: Exam) => void;
+  closeExam: () => void;
+  saveExamResult: (result: ExamResult) => void;
+  examResults: ExamResult[];
+  bookmarks: string[];
+  toggleBookmark: (questionId: string) => void;
+  userProfile: UserProfile;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
   isNotificationOpen: boolean;
   setIsNotificationOpen: (open: boolean) => void;
   isRoutineOpen: boolean;
   setIsRoutineOpen: (open: boolean) => void;
-  notices: Notice[];
-  routines: RoutineItem[];
-  bookmarks: string[];
-  toggleBookmark: (questionId: string) => void;
   searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  userProfile: UserProfile;
-  updateUserProfile: (profile: Partial<UserProfile>) => void;
-  showToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
+  setSearchQuery: (query: string) => void;
+  showToast: (text: string, type?: 'success' | 'error' | 'info') => void;
   toastMessage: { text: string; type: string } | null;
   viewingResult: ExamResult | null;
   setViewingResult: (res: ExamResult | null) => void;
@@ -52,15 +43,19 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('home');
   const [selectedCategory, setSelectedCategory] = useState<CourseCategory>('all');
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [courses] = useState<Course[]>(mockCourses);
+  const [exams] = useState<Exam[]>(mockExams);
+  const [notices] = useState<Notice[]>(mockNotices);
+  const [routines] = useState<RoutineItem[]>(mockRoutines);
+  
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('tamreen_enrolled_courses');
+    const saved = localStorage.getItem('tamreen_enrolled');
     return saved ? JSON.parse(saved) : ['course-1'];
   });
-  
+
   const [activeExam, setActiveExam] = useState<Exam | null>(null);
   const [examResults, setExamResults] = useState<ExamResult[]>(() => {
-    const saved = localStorage.getItem('tamreen_exam_results');
+    const saved = localStorage.getItem('tamreen_results');
     return saved ? JSON.parse(saved) : [];
   });
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
@@ -87,19 +82,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
   });
 
-  const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
+  const showToast = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => {
       setToastMessage(null);
     }, 3500);
   };
 
-  const enrollInCourse = (courseId: string, paymentMethod: string = 'bKash') => {
+  const enrollInCourse = (courseId: string, paymentMethod?: string) => {
     if (!enrolledCourseIds.includes(courseId)) {
       const updated = [...enrolledCourseIds, courseId];
       setEnrolledCourseIds(updated);
-      localStorage.setItem('tamreen_enrolled_courses', JSON.stringify(updated));
-      showToast(`অভিনন্দন! ${paymentMethod} এর মাধ্যমে কোর্সে সফলভাবে ভর্তি সম্পন্ন হয়েছে।`, 'success');
+      localStorage.setItem('tamreen_enrolled', JSON.stringify(updated));
+      showToast(`অভিনন্দন! ${paymentMethod ? `${paymentMethod} পেমেন্টের মাধ্যমে ` : ''}কোর্সটিতে সফলভাবে ভর্তি সম্পন্ন হয়েছে।`);
+    } else {
+      showToast('আপনি ইতোমধ্যে এই কোর্সে ভর্তি আছেন', 'info');
     }
   };
 
@@ -112,28 +109,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveExamResult = (result: ExamResult) => {
-    const updated = [result, ...examResults.filter(r => r.examId !== result.examId)];
-    setExamResults(updated);
-    localStorage.setItem('tamreen_exam_results', JSON.stringify(updated));
+    const newResults = [result, ...examResults];
+    setExamResults(newResults);
+    localStorage.setItem('tamreen_results', JSON.stringify(newResults));
     setViewingResult(result);
-    showToast('পরীক্ষা সফলভাবে জমা হয়েছে এবং ফলাফল প্রস্তুত!', 'success');
+    showToast('পরীক্ষা সফলভাবে সম্পন্ন হয়েছে!', 'success');
   };
 
   const toggleBookmark = (questionId: string) => {
-    const updated = bookmarks.includes(questionId)
-      ? bookmarks.filter(id => id !== questionId)
-      : [...bookmarks, questionId];
-    setBookmarks(updated);
-    localStorage.setItem('tamreen_bookmarks', JSON.stringify(updated));
-    showToast(
-      bookmarks.includes(questionId) ? 'বুকমার্ক থেকে সরানো হয়েছে' : 'প্রশ্নটি রিভিউ সেকশনে সেভ করা হয়েছে',
-      'info'
-    );
+    setBookmarks((prev) => {
+      const exists = prev.includes(questionId);
+      const updated = exists
+        ? prev.filter((id) => id !== questionId)
+        : [...prev, questionId];
+      localStorage.setItem('tamreen_bookmarks', JSON.stringify(updated));
+      showToast(exists ? 'বুকমার্ক সরানো হয়েছে' : 'প্রশ্নটি বুকমার্ক করা হয়েছে', 'info');
+      return updated;
+    });
   };
 
-  const updateUserProfile = (profile: Partial<UserProfile>) => {
-    setUserProfile(prev => ({ ...prev, ...profile }));
-    showToast('প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে', 'success');
+  const updateUserProfile = (profileUpdate: Partial<UserProfile>) => {
+    setUserProfile((prev) => ({ ...prev, ...profileUpdate }));
+    showToast('প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে');
   };
 
   return (
@@ -144,29 +141,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedCategory,
         setSelectedCategory,
         courses,
+        exams,
+        notices,
+        routines,
         enrolledCourseIds,
         enrollInCourse,
-        activeExam,
-        startExam,
-        closeExam,
-        examResults,
-        saveExamResult,
         selectedCourseDetails,
         setSelectedCourseDetails,
         checkoutCourse,
         setCheckoutCourse,
+        activeExam,
+        startExam,
+        closeExam,
+        saveExamResult,
+        examResults,
+        bookmarks,
+        toggleBookmark,
+        userProfile,
+        updateUserProfile,
         isNotificationOpen,
         setIsNotificationOpen,
         isRoutineOpen,
         setIsRoutineOpen,
-        notices: mockNotices,
-        routines: mockRoutines,
-        bookmarks,
-        toggleBookmark,
         searchQuery,
         setSearchQuery,
-        userProfile,
-        updateUserProfile,
         showToast,
         toastMessage,
         viewingResult,

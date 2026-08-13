@@ -117,3 +117,13 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export interface UserProfile {
+  name: string;
+  phone: string;
+  email: string;
+  rollNo: string;
+  institution: string;
+  targetExam: string;
+  avatar: string;
+}
