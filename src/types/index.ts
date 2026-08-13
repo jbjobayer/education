@@ -1,4 +1,22 @@
-export type MainTab = 'home' | 'courses' | 'exams' | 'ai' | 'profile';
+export type MainTab = 'home' | 'courses' | 'exams' | 'ai' | 'profile' | 'circular' | 'subject_wise';
+
+export interface JobCircular {
+  id: string;
+  title: string;
+  organization: string;
+  category: 'ntrca' | 'madrasah' | 'primary' | 'other';
+  tag: string;
+  vacancies: string;
+  deadline: string;
+  publishDate: string;
+  isHot?: boolean;
+  salaryScale?: string;
+  educationalReq?: string;
+  ageLimit?: string;
+  applyLink?: string;
+  description?: string;
+  pdfUrl?: string;
+}
 
 export type CourseCategory = 
   | 'all'

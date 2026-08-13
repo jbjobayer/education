@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useFont } from '../../context/FontContext';
 import { 
   X, 
   Clock, 
@@ -16,6 +17,7 @@ import { ExamResult } from '../../types';
 
 export const ExamModal: React.FC = () => {
   const { activeExam, closeExam, saveExamResult, bookmarks, toggleBookmark } = useApp();
+  const { formatArabicText, settings } = useFont();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -207,13 +209,16 @@ export const ExamModal: React.FC = () => {
             </div>
 
             {/* Arabic / Bengali Question text with Neumorphic Plate */}
-            <div className="neu-card p-5 sm:p-6 rounded-3xl mb-5 border border-white/80">
+            <div className="neu-card p-5 sm:p-6 rounded-3xl mb-5 border border-white/80 dark:border-slate-800">
               {currentQuestion?.arabicQuestion && (
-                <p className="font-arabic text-xl sm:text-2xl text-emerald-950 text-right leading-relaxed mb-3 dir-rtl font-extrabold">
-                  {currentQuestion.arabicQuestion}
+                <p 
+                  className="font-arabic text-xl sm:text-2xl text-emerald-950 dark:text-emerald-300 text-right leading-relaxed mb-3 dir-rtl font-extrabold"
+                  dir="rtl"
+                >
+                  {formatArabicText(currentQuestion.arabicQuestion)}
                 </p>
               )}
-              <h2 className="text-base sm:text-lg font-black text-slate-900 leading-relaxed">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 leading-relaxed">
                 {currentQuestion?.question}
               </h2>
             </div>
@@ -223,6 +228,7 @@ export const ExamModal: React.FC = () => {
               {currentQuestion?.options.map((opt, optIdx) => {
                 const isSelected = answers[currentQuestion.id] === optIdx;
                 const optionLetters = ['ক', 'খ', 'গ', 'ঘ'];
+                const formattedOpt = formatArabicText(opt);
 
                 return (
                   <button
@@ -230,19 +236,19 @@ export const ExamModal: React.FC = () => {
                     onClick={() => handleSelectOption(optIdx)}
                     className={`w-full p-4 rounded-2xl text-left flex items-center gap-3.5 transition-all ${
                       isSelected
-                        ? 'neu-inset text-emerald-950 font-black scale-101 border border-emerald-600/40'
-                        : 'neu-btn text-slate-800 font-medium'
+                        ? 'neu-inset text-emerald-950 dark:text-emerald-200 font-black scale-101 border border-emerald-600/40'
+                        : 'neu-btn text-slate-800 dark:text-slate-200 font-medium'
                     }`}
                   >
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
                       isSelected
                         ? 'bg-emerald-800 text-amber-300 shadow-md'
-                        : 'neu-icon text-slate-700'
+                        : 'neu-icon text-slate-700 dark:text-slate-300'
                     }`}>
                       {optionLetters[optIdx]}
                     </div>
                     <span className="text-sm sm:text-base font-bold flex-1 leading-snug">
-                      {opt}
+                      {formattedOpt}
                     </span>
                   </button>
                 );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useFont } from '../../context/FontContext';
 import { 
   X, 
   Award, 
@@ -18,6 +19,7 @@ import { mockExams } from '../../data/mockData';
 
 export const ResultViewModal: React.FC = () => {
   const { viewingResult, setViewingResult, startExam, bookmarks, toggleBookmark } = useApp();
+  const { formatArabicText } = useFont();
   const [aiExplanations, setAiExplanations] = useState<Record<string, { loading: boolean; text?: string }>>({});
 
   if (!viewingResult) return null;
@@ -198,11 +200,14 @@ export const ResultViewModal: React.FC = () => {
 
                 {/* Question Texts */}
                 {q.arabicQuestion && (
-                  <p className="font-arabic text-lg sm:text-xl text-emerald-950 font-black text-right leading-relaxed dir-rtl">
-                    {q.arabicQuestion}
+                  <p 
+                    className="font-arabic text-lg sm:text-xl text-emerald-950 dark:text-emerald-300 font-black text-right leading-relaxed dir-rtl"
+                    dir="rtl"
+                  >
+                    {formatArabicText(q.arabicQuestion)}
                   </p>
                 )}
-                <h4 className="font-bold text-sm sm:text-base text-slate-900 leading-snug">
+                <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 leading-snug">
                   {q.question}
                 </h4>
 
@@ -211,12 +216,13 @@ export const ResultViewModal: React.FC = () => {
                   {q.options.map((opt: string, optIdx: number) => {
                     const isUserPick = userChoice === optIdx;
                     const isRightAnswer = q.correctIndex === optIdx;
+                    const formattedOpt = formatArabicText(opt);
 
-                    let badgeStyle = 'neu-btn text-slate-700';
+                    let badgeStyle = 'neu-btn text-slate-700 dark:text-slate-200';
                     if (isRightAnswer) {
-                      badgeStyle = 'bg-emerald-100/90 border border-emerald-600 text-emerald-950 font-black shadow-xs';
+                      badgeStyle = 'bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-600 dark:border-emerald-500 text-emerald-950 dark:text-emerald-200 font-black shadow-xs';
                     } else if (isUserPick && !isRightAnswer) {
-                      badgeStyle = 'bg-red-50 border border-red-300 text-red-800 line-through';
+                      badgeStyle = 'bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 line-through';
                     }
 
                     return (
@@ -225,13 +231,13 @@ export const ResultViewModal: React.FC = () => {
                         className={`p-3 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-2 ${badgeStyle}`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-white/90 text-slate-800 text-xs font-black flex items-center justify-center shrink-0 border border-slate-300">
+                          <span className="w-6 h-6 rounded-lg bg-white/90 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-black flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-700">
                             {['ক', 'খ', 'গ', 'ঘ'][optIdx]}
                           </span>
-                          <span>{opt}</span>
+                          <span>{formattedOpt}</span>
                         </div>
-                        {isRightAnswer && <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />}
-                        {isUserPick && !isRightAnswer && <XCircle className="w-4 h-4 text-red-600 shrink-0" />}
+                        {isRightAnswer && <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />}
+                        {isUserPick && !isRightAnswer && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
                       </div>
                     );
                   })}

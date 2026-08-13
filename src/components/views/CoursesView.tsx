@@ -123,10 +123,10 @@ export const CoursesView: React.FC = () => {
       {/* Subject Filter Section (বিষয় নির্বাচন করুন | ৭টি কোর্স সহজলভ্য) */}
       <div>
         <div className="flex items-center justify-between gap-2 mb-3">
-          <h3 className="font-extrabold text-sm sm:text-base text-[#111827]">
+          <h3 className="font-extrabold text-sm sm:text-base text-[#111827] dark:text-slate-100">
             বিষয় নির্বাচন করুন
           </h3>
-          <span className="bg-[#e6f7ef] text-[#059669] border border-[#a7f3d0] px-3 py-0.5 rounded-full text-xs font-bold shadow-xs">
+          <span className="bg-[#e6f7ef] dark:bg-[#064e3b]/40 text-[#059669] dark:text-[#34d399] border border-[#a7f3d0] dark:border-emerald-700/50 px-3 py-0.5 rounded-full text-xs font-bold shadow-xs">
             {courses.length}টি কোর্স সহজলভ্য
           </span>
         </div>
@@ -148,8 +148,8 @@ export const CoursesView: React.FC = () => {
                 }}
                 className={`flex flex-col items-center justify-center p-3 rounded-2xl min-w-[92px] sm:min-w-[105px] transition-all cursor-pointer select-none active:scale-95 ${
                   isSelected
-                    ? 'neu-btn border-2 border-[#14b8a6] bg-[#edf2f9] shadow-[3px_3px_8px_rgba(195,207,226,0.8),-3px_-3px_8px_rgba(255,255,255,0.9)]'
-                    : 'neu-btn hover:bg-[#f0f4fa]'
+                    ? 'neu-btn border-2 border-[#14b8a6] bg-[#edf2f9] dark:bg-[#18263e] shadow-[3px_3px_8px_rgba(195,207,226,0.8),-3px_-3px_8px_rgba(255,255,255,0.9)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.6),-3px_-3px_8px_rgba(255,255,255,0.05)]'
+                    : 'neu-btn hover:bg-[#f0f4fa] dark:hover:bg-[#152338]'
                 }`}
               >
                 {/* Circular Icon Plate */}
@@ -162,7 +162,7 @@ export const CoursesView: React.FC = () => {
                 {/* Subject Label */}
                 <span
                   className={`text-xs font-bold text-center leading-tight whitespace-nowrap ${
-                    isSelected ? 'text-[#111827] font-black' : 'text-slate-700'
+                    isSelected ? 'text-[#111827] dark:text-emerald-400 font-black' : 'text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {sub.label}
@@ -190,15 +190,15 @@ export const CoursesView: React.FC = () => {
         ) : (
           <div className="text-center py-12 rounded-3xl neu-card p-6">
             <BookOpen className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-slate-800">কোনো কোর্স পাওয়া যায়নি</h4>
-            <p className="text-xs text-slate-500 mt-1">অন্য কোনো বিষয় নির্বাচন করে দেখুন।</p>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">কোনো কোর্স পাওয়া যায়নি</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">অন্য কোনো বিষয় নির্বাচন করে দেখুন।</p>
             <button
               onClick={() => {
                 setSelectedSubjectFilter('all');
                 setSelectedCategory('all');
                 setSearchQuery('');
               }}
-              className="mt-3 px-4 py-1.5 rounded-full neu-btn text-xs font-bold text-[#005a36]"
+              className="mt-3 px-4 py-1.5 rounded-full neu-btn text-xs font-bold text-[#005a36] dark:text-emerald-400"
             >
               সকল কোর্স দেখুন
             </button>

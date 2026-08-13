@@ -5,6 +5,8 @@
 
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { FontProvider } from './context/FontContext';
 import { Header } from './components/Header';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Toast } from './components/Toast';
@@ -15,6 +17,8 @@ import { CoursesView } from './components/views/CoursesView';
 import { ExamsView } from './components/views/ExamsView';
 import { TamreenAIView } from './components/views/TamreenAIView';
 import { ProfileView } from './components/views/ProfileView';
+import { CircularsView } from './components/views/CircularsView';
+import { SubjectWiseView } from './components/views/SubjectWiseView';
 
 // Modals & Drawers
 import { CourseDetailsModal } from './components/modals/CourseDetailsModal';
@@ -23,12 +27,13 @@ import { ExamModal } from './components/modals/ExamModal';
 import { ResultViewModal } from './components/modals/ResultViewModal';
 import { RoutineModal } from './components/modals/RoutineModal';
 import { NotificationDrawer } from './components/modals/NotificationDrawer';
+import { FontSettingsModal } from './components/modals/FontSettingsModal';
 
 const MainContent: React.FC = () => {
   const { activeTab } = useApp();
 
   return (
-    <div className="min-h-screen bg-[#e9edf5] text-slate-800 flex flex-col justify-between selection:bg-emerald-600 selection:text-white">
+    <div className="min-h-screen bg-[#e9edf5] dark:bg-[#0d1522] text-slate-800 dark:text-slate-100 flex flex-col justify-between selection:bg-emerald-600 selection:text-white transition-colors duration-200">
       {/* Neumorphic Top Header */}
       <Header />
 
@@ -38,6 +43,8 @@ const MainContent: React.FC = () => {
         {activeTab === 'courses' && <CoursesView />}
         {activeTab === 'exams' && <ExamsView />}
         {activeTab === 'ai' && <TamreenAIView />}
+        {activeTab === 'circular' && <CircularsView />}
+        {activeTab === 'subject_wise' && <SubjectWiseView />}
         {activeTab === 'profile' && <ProfileView />}
       </main>
 
@@ -51,6 +58,7 @@ const MainContent: React.FC = () => {
       <ResultViewModal />
       <RoutineModal />
       <NotificationDrawer />
+      <FontSettingsModal />
       <Toast />
     </div>
   );
@@ -58,8 +66,13 @@ const MainContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainContent />
-    </AppProvider>
+    <ThemeProvider>
+      <FontProvider>
+        <AppProvider>
+          <MainContent />
+        </AppProvider>
+      </FontProvider>
+    </ThemeProvider>
   );
 }
+
