@@ -74,12 +74,14 @@ export interface Question {
   correctIndex: number;
   explanation: string;
   subject: string;
+  language?: 'ar' | 'bn' | 'en' | 'mixed';
+  optionLabels?: string[];
 }
 
 export interface Exam {
   id: string;
   title: string;
-  category: 'live' | 'model_test' | 'previous_year' | 'subject';
+  category: 'live' | 'model_test' | 'previous_year' | 'subject' | 'free' | 'daily';
   subject: string;
   totalMarks: number;
   durationMinutes: number;
@@ -90,6 +92,8 @@ export interface Exam {
   questions: Question[];
   status: 'upcoming' | 'running' | 'completed';
   participantsCount: number;
+  dateStr?: string;
+  isFree?: boolean;
 }
 
 export interface ExamResult {
