@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #e9edf5;
+    color: #1e293b;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  }
+
+  .font-arabic {
+    font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'KFGQPC Uthmanic Script HAFS', serif;
+  }
+}
+
+/* Custom Neumorphism Utility Classes */
+.neu-flat {
+  background: #e9edf5;
+  box-shadow: 7px 7px 16px #c5d2e3, -7px -7px 16px #ffffff;
+}
+
+.neu-card {
+  background: #e9edf5;
+  box-shadow: 8px 8px 18px #c4d1e2, -8px -8px 18px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+}
+
+.neu-card-sm {
+  background: #e9edf5;
+  box-shadow: 5px 5px 12px #c7d4e5, -5px -5px 12px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+.neu-card-hover {
+  background: #e9edf5;
+  box-shadow: 7px 7px 15px #c4d1e2, -7px -7px 15px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neu-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 10px 10px 22px #bdcbe0, -10px -10px 22px #ffffff;
+}
+
+.neu-btn {
+  background: #e8edf5;
+  box-shadow: 5px 5px 10px #c4d1e2, -5px -5px 10px #ffffff;
+  transition: all 0.18s ease-in-out;
+  cursor: pointer;
+}
+
+.neu-btn:hover {
+  box-shadow: 6px 6px 14px #bdcbe0, -6px -6px 14px #ffffff;
+}
+
+.neu-btn:active {
+  box-shadow: inset 3px 3px 6px #c2cfdf, inset -3px -3px 6px #ffffff;
+  transform: scale(0.98);
+}
+
+.neu-btn-primary {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 5px 5px 12px #b5c7dc, -4px -4px 10px #ffffff;
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.neu-btn-primary:hover {
+  box-shadow: 6px 6px 15px #a6bace, -5px -5px 12px #ffffff;
+  filter: brightness(1.05);
+}
+
+.neu-btn-primary:active {
+  box-shadow: inset 3px 3px 6px #024734, inset -2px -2px 6px rgba(255, 255, 255, 0.2);
+  transform: scale(0.98);
+}
+
+.neu-btn-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 5px 5px 12px #b8cadf, -4px -4px 10px #ffffff;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.neu-btn-amber:hover {
+  box-shadow: 6px 6px 15px #a8bcd2, -5px -5px 12px #ffffff;
+  filter: brightness(1.06);
+}
+
+.neu-btn-amber:active {
+  box-shadow: inset 3px 3px 6px #92400e, inset -2px -2px 6px rgba(255, 255, 255, 0.3);
+  transform: scale(0.98);
+}
+
+.neu-inset {
+  background: #e3e9f2;
+  box-shadow: inset 4px 4px 8px #c0cede, inset -4px -4px 8px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.neu-inset-sm {
+  background: #e4ebf4;
+  box-shadow: inset 2.5px 2.5px 5px #c3d1e1, inset -2.5px -2.5px 5px #ffffff;
+}
+
+.neu-tab-container {
+  background: #e2e8f2;
+  box-shadow: inset 3px 3px 6px #bfccde, inset -3px -3px 6px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.neu-tab-active {
+  background: #edf2f8;
+  box-shadow: 4px 4px 8px #b9c7db, -4px -4px 8px #ffffff;
+  color: #047857;
+  font-weight: 700;
+}
+
+.neu-tab-active-amber {
+  background: #edf2f8;
+  box-shadow: 4px 4px 8px #b9c7db, -4px -4px 8px #ffffff;
+  color: #b45309;
+  font-weight: 700;
+}
+
+.neu-icon {
+  background: #e8edf5;
+  box-shadow: 4px 4px 8px #c5d2e3, -4px -4px 8px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.neu-icon-inset {
+  background: #e2e8f2;
+  box-shadow: inset 2.5px 2.5px 5px #c0cede, inset -2.5px -2.5px 5px #ffffff;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Custom Scrollbar for pills */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

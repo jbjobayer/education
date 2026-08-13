@@ -1,0 +1,6 @@
+{
+  "name": "আত-তামরীন একাডেমি",
+  "description": "অনলাইন শিক্ষক নিবন্ধন (NTRCA), মাদ্রাসা ও বিষয়ভিত্তিক পরীক্ষা প্রস্তুতি এবং তামরীন এআই এডুকেশনাল প্ল্যাটফর্ম।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
