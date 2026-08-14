@@ -20,8 +20,9 @@ import {
   User as UserIcon
 } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { mockExams, mockLeaderboardData } from '../../data/mockData';
+import { mockExams } from '../../data/mockData';
 import { LeaderboardEntry } from '../../types';
+import { generateExamLeaderboard } from '../../utils/leaderboardUtils';
 import { 
   getUnifiedQuestionText, 
   getTextDirection, 
@@ -53,40 +54,10 @@ export const ResultView: React.FC = () => {
   const percentage = Math.round((viewingResult.score / (viewingResult.totalMarks || 1)) * 100);
   const isPassed = percentage >= 40;
 
-  // Build Leaderboard List including user's dynamic performance
+  // Build Isolated Exam-specific Leaderboard List strictly based on this exam's total questions & total marks
   const leaderboardList: LeaderboardEntry[] = useMemo(() => {
-    const base = [...(mockLeaderboardData.default || [])];
-    
-    // Check if user is already represented or needs update
-    const userEntry: LeaderboardEntry = {
-      id: 'current-user-res',
-      rank: 1, // will recalculate
-      name: userProfile.name || 'মুহাম্মদ আব্দুল্লাহ আল-মামুন',
-      avatar: userProfile.avatar || '',
-      correctAnswers: viewingResult.correctAnswers,
-      wrongAnswers: viewingResult.wrongAnswers,
-      score: viewingResult.score,
-      totalMarks: viewingResult.totalMarks,
-      timeSpentSeconds: viewingResult.timeSpentSeconds || 45,
-      isCurrentUser: true,
-    };
-
-    // Filter out mock user duplicate if any
-    const listWithoutUser = base.filter(item => !item.isCurrentUser && item.name !== userEntry.name);
-    const combined = [...listWithoutUser, userEntry];
-
-    // Sort by Score descending, then by timeSpent ascending
-    combined.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return a.timeSpentSeconds - b.timeSpentSeconds;
-    });
-
-    // Assign Rank 1, 2, 3...
-    return combined.map((entry, index) => ({
-      ...entry,
-      rank: index + 1,
-    }));
-  }, [viewingResult, userProfile]);
+    return generateExamLeaderboard(exam, viewingResult, userProfile);
+  }, [exam, viewingResult, userProfile]);
 
   const userRankEntry = leaderboardList.find(e => e.isCurrentUser) || leaderboardList[0];
 
@@ -454,7 +425,7 @@ export const ResultView: React.FC = () => {
 
                         {/* Subtitle: Subject • Question count • Accuracy */}
                         <p className="text-[10px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium">
-                          {exam.subject} • প্রশ্ন: {exam.questions.length}টি • একুরেসি: {accuracy}%
+                          {exam.subject} • প্রশ্ন: {(exam.totalQuestions || exam.questions.length)}টি • একুরেসি: {accuracy}%
                         </p>
                       </div>
                     </div>
@@ -487,7 +458,7 @@ export const ResultView: React.FC = () => {
                           নাম্বার
                         </span>
                         <span className="text-[11px] xs:text-xs sm:text-base font-black text-[#d97706] dark:text-amber-400 block mt-0.5 whitespace-nowrap">
-                          {entry.score.toFixed(0)} / {entry.totalMarks}
+                          {entry.score % 1 === 0 ? entry.score.toFixed(0) : entry.score.toFixed(2)} / {entry.totalMarks}
                         </span>
                       </div>
                     </div>
