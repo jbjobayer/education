@@ -19,7 +19,8 @@ import { mockExams } from '../../data/mockData';
 import { 
   getUnifiedQuestionText, 
   getTextDirection, 
-  getOptionsConfig 
+  getOptionsConfig,
+  parseQuestionData 
 } from '../../utils/questionUtils';
 
 export const ResultViewModal: React.FC = () => {
@@ -156,6 +157,10 @@ export const ResultViewModal: React.FC = () => {
             const aiData = aiExplanations[q.id];
             const isBookmarked = bookmarks.includes(q.id);
 
+            const parsedQ = parseQuestionData(q);
+            const optConfig = getOptionsConfig(q.options, q.optionLabels);
+            const expDir = getTextDirection(q.explanation);
+
             return (
               <div
                 key={q.id}
@@ -167,35 +172,32 @@ export const ResultViewModal: React.FC = () => {
                     : 'border-l-4 border-l-red-500'
                 }`}
               >
-                {/* Question Top Header */}
-                <div className="flex items-center justify-between gap-2">
+                {/* Question Top Header (Subject & Status) */}
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
                   <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-xl bg-[#e9edf5] neu-inset text-slate-800 text-xs font-black flex items-center justify-center">
-                      {idx + 1}
-                    </span>
-                    <span className="text-xs font-bold text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-md">
+                    <span className="text-xs font-bold text-emerald-900 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-0.5 rounded-md">
                       {q.subject}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     {isCorrect ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-black flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> সঠিক (+১.০)
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 text-xs font-black flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" /> সঠিক (+১.০)
                       </span>
                     ) : isSkipped ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1">
                         <MinusCircle className="w-3.5 h-3.5 text-slate-500" /> উত্তর দেননি
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-black flex items-center gap-1">
-                        <XCircle className="w-3.5 h-3.5 text-red-600" /> ভুল উত্তর (-০.২৫)
+                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 dark:bg-rose-950/60 text-red-700 dark:text-rose-300 text-xs font-black flex items-center gap-1">
+                        <XCircle className="w-3.5 h-3.5 text-red-600 dark:text-rose-400" /> ভুল উত্তর (-০.২৫)
                       </span>
                     )}
 
                     <button
                       onClick={() => toggleBookmark(q.id)}
-                      className="p-1.5 rounded-lg neu-btn text-slate-400 hover:text-amber-500 transition-colors"
+                      className="p-1.5 rounded-lg neu-btn text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
                       title="বুকমার্ক"
                     >
                       <Award className={`w-4 h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
@@ -203,60 +205,46 @@ export const ResultViewModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Question Top Header Bar */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black flex items-center justify-center select-none">
-                      {getTextDirection(getUnifiedQuestionText(q)).isPureArabic ? (idx + 1).toLocaleString('ar-EG') : (idx + 1).toLocaleString('bn-BD')}
-                    </span>
-                    <span className="text-[11px] font-extrabold text-[#004d2e] dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60">
-                      {q.subject}
-                    </span>
+                {/* Top Question Row: Number badge followed immediately by question text */}
+                <div 
+                  className={`flex items-start gap-3 my-2 ${
+                    parsedQ.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'
+                  }`}
+                >
+                  {/* Question Index Badge */}
+                  <div className="w-8 h-8 rounded-full bg-[#1e293b] dark:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5 select-none">
+                    {parsedQ.isArabicNumbering ? (idx + 1).toLocaleString('ar-EG') : (idx + 1).toLocaleString('bn-BD')}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {isCorrect ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-black flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> সঠিক (+১.০)
-                      </span>
-                    ) : isSkipped ? (
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1">
-                        <MinusCircle className="w-3.5 h-3.5 text-slate-500" /> উত্তর দেননি
-                      </span>
+                  {/* Question Content */}
+                  <div className={`flex-1 ${parsedQ.primaryTextAlign}`}>
+                    {parsedQ.isArabicWithBengali ? (
+                      <div className="space-y-1">
+                        <h4 
+                          className="font-arabic text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-relaxed" 
+                          dir="rtl"
+                        >
+                          {formatArabicText(parsedQ.arabicText)}
+                        </h4>
+                        <p 
+                          className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed text-right" 
+                          dir="ltr"
+                        >
+                          {parsedQ.bengaliTranslation}
+                        </p>
+                      </div>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-black flex items-center gap-1">
-                        <XCircle className="w-3.5 h-3.5 text-red-600" /> ভুল উত্তর (-০.২৫)
-                      </span>
-                    )}
-
-                    <button
-                      onClick={() => toggleBookmark(q.id)}
-                      className="p-1.5 rounded-lg neu-btn text-slate-400 hover:text-amber-500 transition-colors"
-                      title="বুকমার্ক"
-                    >
-                      <Award className={`w-4 h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Unified Question Text */}
-                {(() => {
-                  const unifiedText = getUnifiedQuestionText(q);
-                  const formattedQ = formatArabicText(unifiedText);
-                  const { dir, textAlign, isPureArabic } = getTextDirection(unifiedText);
-                  const optConfig = getOptionsConfig(q.options, q.optionLabels);
-                  const expDir = getTextDirection(q.explanation);
-
-                  return (
-                    <>
                       <h4 
-                        className={`leading-relaxed text-slate-900 dark:text-slate-100 ${textAlign} ${
-                          isPureArabic ? 'font-arabic text-lg sm:text-xl font-black' : 'font-bold text-sm sm:text-base'
+                        className={`leading-relaxed text-slate-900 dark:text-slate-100 ${parsedQ.primaryTextAlign} ${
+                          parsedQ.isRTL ? 'font-arabic text-lg sm:text-xl font-black' : 'font-bold text-sm sm:text-base'
                         }`}
-                        dir={dir}
+                        dir={parsedQ.primaryDir}
                       >
-                        {formattedQ}
+                        {formatArabicText(parsedQ.singleText)}
                       </h4>
+                    )}
+                  </div>
+                </div>
 
                       {/* Options List */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
@@ -312,9 +300,6 @@ export const ResultViewModal: React.FC = () => {
                           {formatArabicText(q.explanation)}
                         </p>
                       </div>
-                    </>
-                  );
-                })()}
 
                 {/* Tamreen AI Instant Deep Explanation */}
                 {aiData?.loading ? (

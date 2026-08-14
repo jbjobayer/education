@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { mockQuestions } from '../../data/mockData';
 import { useFont } from '../../context/FontContext';
-import { getUnifiedQuestionText, getTextDirection } from '../../utils/questionUtils';
+import { getUnifiedQuestionText, getTextDirection, parseQuestionData } from '../../utils/questionUtils';
 
 export const ProfileView: React.FC = () => {
   const { 
@@ -232,10 +232,8 @@ export const ProfileView: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3.5">
-            {bookmarkedQuestions.map((q) => {
-              const unifiedText = getUnifiedQuestionText(q);
-              const formattedQ = formatArabicText(unifiedText);
-              const { dir, textAlign, isPureArabic } = getTextDirection(unifiedText);
+            {bookmarkedQuestions.map((q, qIdx) => {
+              const parsedQ = parseQuestionData(q);
 
               return (
                 <div key={q.id} className="p-5 rounded-3xl neu-card space-y-2.5">
@@ -245,19 +243,47 @@ export const ProfileView: React.FC = () => {
                     </span>
                     <button
                       onClick={() => toggleBookmark(q.id)}
-                      className="text-xs text-red-600 hover:underline font-bold"
+                      className="text-xs text-red-600 hover:underline font-bold cursor-pointer"
                     >
                       সরান
                     </button>
                   </div>
-                  <h4 
-                    className={`font-bold leading-relaxed text-slate-900 ${textAlign} ${
-                      isPureArabic ? 'font-arabic text-lg' : 'text-sm'
-                    }`}
-                    dir={dir}
-                  >
-                    {formattedQ}
-                  </h4>
+
+                  {/* Question Row */}
+                  <div className={`flex items-start gap-3 my-1.5 ${parsedQ.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
+                    <div className="w-7 h-7 rounded-full bg-[#1e293b] text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5 select-none">
+                      {parsedQ.isArabicNumbering ? (qIdx + 1).toLocaleString('ar-EG') : (qIdx + 1).toLocaleString('bn-BD')}
+                    </div>
+
+                    <div className={`flex-1 ${parsedQ.primaryTextAlign}`}>
+                      {parsedQ.isArabicWithBengali ? (
+                        <div className="space-y-1">
+                          <h4 
+                            className="font-arabic text-lg font-black text-slate-900 leading-relaxed" 
+                            dir="rtl"
+                          >
+                            {formatArabicText(parsedQ.arabicText)}
+                          </h4>
+                          <p 
+                            className="text-xs font-semibold text-slate-600 leading-relaxed text-right" 
+                            dir="ltr"
+                          >
+                            {parsedQ.bengaliTranslation}
+                          </p>
+                        </div>
+                      ) : (
+                        <h4 
+                          className={`font-bold leading-relaxed text-slate-900 ${parsedQ.primaryTextAlign} ${
+                            parsedQ.isRTL ? 'font-arabic text-lg' : 'text-sm'
+                          }`}
+                          dir={parsedQ.primaryDir}
+                        >
+                          {formatArabicText(parsedQ.singleText)}
+                        </h4>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="p-3 neu-inset rounded-2xl text-xs text-slate-800">
                     <strong className="text-emerald-800">সঠিক উত্তর:</strong> {formatArabicText(q.options[q.correctIndex])} — <span className="text-slate-600">{formatArabicText(q.explanation)}</span>
                   </div>

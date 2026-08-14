@@ -15,7 +15,8 @@ import { ExamResult } from '../../types';
 import { 
   getUnifiedQuestionText, 
   getTextDirection, 
-  getOptionsConfig 
+  getOptionsConfig,
+  parseQuestionData 
 } from '../../utils/questionUtils';
 
 export const ExamModal: React.FC = () => {
@@ -199,10 +200,8 @@ export const ExamModal: React.FC = () => {
           const selectedOption = answers[question.id];
           const hasSelected = selectedOption !== undefined;
           
-          // Get clean unified question text and direction
-          const unifiedQuestion = getUnifiedQuestionText(question);
-          const formattedQuestion = formatArabicText(unifiedQuestion);
-          const { dir: qDir, textAlign: qTextAlign, isPureArabic: qIsPureArabic } = getTextDirection(unifiedQuestion);
+          // Parse question text, sub-translation, and direction configuration
+          const parsedQ = parseQuestionData(question);
 
           // Get options majority configuration
           const optionsConfig = getOptionsConfig(question.options, question.optionLabels);
@@ -217,29 +216,46 @@ export const ExamModal: React.FC = () => {
                   : 'border-slate-200 dark:border-slate-800'
               }`}
             >
-              {/* Top Question Row */}
+              {/* Top Question Row: Question index directly followed by the question */}
               <div 
                 className={`flex items-start gap-3 mb-4 ${
-                  qIsPureArabic ? 'flex-row-reverse text-right' : 'flex-row text-left'
+                  parsedQ.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'
                 }`}
               >
                 {/* Question Index Badge */}
                 <div className="w-8 h-8 rounded-full bg-[#1e293b] dark:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5 select-none">
-                  {qIsPureArabic ? (qIndex + 1).toLocaleString('ar-EG') : (qIndex + 1).toLocaleString('bn-BD')}
+                  {parsedQ.isArabicNumbering ? (qIndex + 1).toLocaleString('ar-EG') : (qIndex + 1).toLocaleString('bn-BD')}
                 </div>
 
-                {/* Unified Question Text */}
-                <div className={`flex-1 ${qTextAlign}`}>
-                  <h3 
-                    className={`font-bold leading-relaxed text-slate-900 dark:text-slate-100 ${
-                      qIsPureArabic 
-                        ? 'font-arabic text-lg sm:text-xl font-black' 
-                        : 'text-sm sm:text-base'
-                    }`}
-                    dir={qDir}
-                  >
-                    {formattedQuestion}
-                  </h3>
+                {/* Question Content */}
+                <div className={`flex-1 ${parsedQ.primaryTextAlign}`}>
+                  {parsedQ.isArabicWithBengali ? (
+                    <div className="space-y-1">
+                      <h3 
+                        className="font-arabic text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-relaxed"
+                        dir="rtl"
+                      >
+                        {formatArabicText(parsedQ.arabicText)}
+                      </h3>
+                      <p 
+                        className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed text-right"
+                        dir="ltr"
+                      >
+                        {parsedQ.bengaliTranslation}
+                      </p>
+                    </div>
+                  ) : (
+                    <h3 
+                      className={`font-bold leading-relaxed text-slate-900 dark:text-slate-100 ${
+                        parsedQ.isRTL 
+                          ? 'font-arabic text-lg sm:text-xl font-black' 
+                          : 'text-sm sm:text-base'
+                      }`}
+                      dir={parsedQ.primaryDir}
+                    >
+                      {formatArabicText(parsedQ.singleText)}
+                    </h3>
+                  )}
                 </div>
               </div>
 

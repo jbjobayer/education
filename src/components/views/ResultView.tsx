@@ -25,7 +25,8 @@ import { LeaderboardEntry } from '../../types';
 import { 
   getUnifiedQuestionText, 
   getTextDirection, 
-  getOptionsConfig 
+  getOptionsConfig,
+  parseQuestionData 
 } from '../../utils/questionUtils';
 
 export const ResultView: React.FC = () => {
@@ -522,10 +523,8 @@ export const ResultView: React.FC = () => {
             const aiData = aiExplanations[q.id];
             const isBookmarked = bookmarks.includes(q.id);
 
-            // Question text & direction config
-            const unifiedQuestion = getUnifiedQuestionText(q);
-            const formattedQuestion = formatArabicText(unifiedQuestion);
-            const { dir: qDir, textAlign: qTextAlign, isPureArabic: qIsPureArabic } = getTextDirection(unifiedQuestion);
+            // Question parsing & direction config
+            const parsedQ = parseQuestionData(q);
 
             // Options majority configuration
             const optionsConfig = getOptionsConfig(q.options, q.optionLabels);
@@ -545,12 +544,9 @@ export const ResultView: React.FC = () => {
                     : 'border-rose-300 dark:border-rose-800/80 shadow-[0_4px_16px_rgba(225,29,72,0.06)]'
                 }`}
               >
-                {/* Question Top Header Bar */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
+                {/* Question Top Header Bar (Subject & Status) */}
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-100 dark:border-slate-800/70">
                   <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black flex items-center justify-center select-none">
-                      {qIsPureArabic ? (idx + 1).toLocaleString('ar-EG') : (idx + 1).toLocaleString('bn-BD')}
-                    </span>
                     <span className="text-[11px] font-extrabold text-[#004d2e] dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60">
                       {q.subject}
                     </span>
@@ -581,17 +577,48 @@ export const ResultView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Unified Question Text with Strict Direction Logic */}
-                <h4 
-                  className={`leading-relaxed text-slate-900 dark:text-slate-100 ${qTextAlign} ${
-                    qIsPureArabic 
-                      ? 'font-arabic text-lg sm:text-xl font-black' 
-                      : 'font-bold text-sm sm:text-base'
+                {/* Top Question Row: Number Badge leading directly into Question Text */}
+                <div 
+                  className={`flex items-start gap-3 my-2 ${
+                    parsedQ.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'
                   }`}
-                  dir={qDir}
                 >
-                  {formattedQuestion}
-                </h4>
+                  {/* Question Index Badge (Matching Exam Card!) */}
+                  <div className="w-8 h-8 rounded-full bg-[#1e293b] dark:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5 select-none">
+                    {parsedQ.isArabicNumbering ? (idx + 1).toLocaleString('ar-EG') : (idx + 1).toLocaleString('bn-BD')}
+                  </div>
+
+                  {/* Question Content */}
+                  <div className={`flex-1 ${parsedQ.primaryTextAlign}`}>
+                    {parsedQ.isArabicWithBengali ? (
+                      <div className="space-y-1">
+                        <h4 
+                          className="font-arabic text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-relaxed" 
+                          dir="rtl"
+                        >
+                          {formatArabicText(parsedQ.arabicText)}
+                        </h4>
+                        <p 
+                          className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 leading-relaxed text-right" 
+                          dir="ltr"
+                        >
+                          {parsedQ.bengaliTranslation}
+                        </p>
+                      </div>
+                    ) : (
+                      <h4 
+                        className={`leading-relaxed text-slate-900 dark:text-slate-100 ${parsedQ.primaryTextAlign} ${
+                          parsedQ.isRTL 
+                            ? 'font-arabic text-lg sm:text-xl font-black' 
+                            : 'font-bold text-sm sm:text-base'
+                        }`}
+                        dir={parsedQ.primaryDir}
+                      >
+                        {formatArabicText(parsedQ.singleText)}
+                      </h4>
+                    )}
+                  </div>
+                </div>
 
                 {/* 4 Options Grid with Majority Language Direction */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
