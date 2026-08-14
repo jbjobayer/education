@@ -36,6 +36,8 @@ interface AppContextType {
   toastMessage: { text: string; type: string } | null;
   viewingResult: ExamResult | null;
   setViewingResult: (res: ExamResult | null) => void;
+  resultSubTab: 'explanation' | 'leaderboard';
+  setResultSubTab: (tab: 'explanation' | 'leaderboard') => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,6 +61,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [];
   });
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
+  const [resultSubTab, setResultSubTab] = useState<'explanation' | 'leaderboard'>('explanation');
 
   const [selectedCourseDetails, setSelectedCourseDetails] = useState<Course | null>(null);
   const [checkoutCourse, setCheckoutCourse] = useState<Course | null>(null);
@@ -169,6 +172,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toastMessage,
         viewingResult,
         setViewingResult,
+        resultSubTab,
+        setResultSubTab,
       }}
     >
       {children}

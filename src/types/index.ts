@@ -112,6 +112,20 @@ export interface ExamResult {
   totalParticipants?: number;
 }
 
+export interface LeaderboardEntry {
+  id: string;
+  rank: number;
+  name: string;
+  avatar: string;
+  institution?: string;
+  correctAnswers: number;
+  wrongAnswers: number;
+  score: number;
+  totalMarks: number;
+  timeSpentSeconds: number;
+  isCurrentUser?: boolean;
+}
+
 export interface Notice {
   id: string;
   title: string;

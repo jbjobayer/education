@@ -19,18 +19,18 @@ import { TamreenAIView } from './components/views/TamreenAIView';
 import { ProfileView } from './components/views/ProfileView';
 import { CircularsView } from './components/views/CircularsView';
 import { SubjectWiseView } from './components/views/SubjectWiseView';
+import { ResultView } from './components/views/ResultView';
 
 // Modals & Drawers
 import { CourseDetailsModal } from './components/modals/CourseDetailsModal';
 import { CheckoutDrawer } from './components/modals/CheckoutDrawer';
 import { ExamModal } from './components/modals/ExamModal';
-import { ResultViewModal } from './components/modals/ResultViewModal';
 import { RoutineModal } from './components/modals/RoutineModal';
 import { NotificationDrawer } from './components/modals/NotificationDrawer';
 import { FontSettingsModal } from './components/modals/FontSettingsModal';
 
 const MainContent: React.FC = () => {
-  const { activeTab } = useApp();
+  const { activeTab, viewingResult } = useApp();
 
   return (
     <div className="min-h-screen bg-[#e9edf5] dark:bg-[#0d1522] text-slate-800 dark:text-slate-100 flex flex-col justify-between selection:bg-emerald-600 selection:text-white transition-colors duration-200">
@@ -39,13 +39,20 @@ const MainContent: React.FC = () => {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-5 md:p-6 pb-20 md:pb-8">
-        {activeTab === 'home' && <HomeView />}
-        {activeTab === 'courses' && <CoursesView />}
-        {activeTab === 'exams' && <ExamsView />}
-        {activeTab === 'ai' && <TamreenAIView />}
-        {activeTab === 'circular' && <CircularsView />}
-        {activeTab === 'subject_wise' && <SubjectWiseView />}
-        {activeTab === 'profile' && <ProfileView />}
+        {/* If viewing a completed exam result, render as a dedicated inline page (No popup) */}
+        {viewingResult ? (
+          <ResultView />
+        ) : (
+          <>
+            {activeTab === 'home' && <HomeView />}
+            {activeTab === 'courses' && <CoursesView />}
+            {activeTab === 'exams' && <ExamsView />}
+            {activeTab === 'ai' && <TamreenAIView />}
+            {activeTab === 'circular' && <CircularsView />}
+            {activeTab === 'subject_wise' && <SubjectWiseView />}
+            {activeTab === 'profile' && <ProfileView />}
+          </>
+        )}
       </main>
 
       {/* Neumorphic Bottom Navigation */}
@@ -55,7 +62,6 @@ const MainContent: React.FC = () => {
       <CourseDetailsModal />
       <CheckoutDrawer />
       <ExamModal />
-      <ResultViewModal />
       <RoutineModal />
       <NotificationDrawer />
       <FontSettingsModal />

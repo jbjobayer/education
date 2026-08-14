@@ -1,4 +1,4 @@
-import { Course, Exam, Notice, RoutineItem } from '../types';
+import { Course, Exam, Notice, RoutineItem, LeaderboardEntry } from '../types';
 
 export const mockInstructors = [
   {
@@ -639,6 +639,100 @@ export const mockExams: Exam[] = [
     isFree: false,
   }
 ];
+
+export const mockLeaderboardData: Record<string, LeaderboardEntry[]> = {
+  default: [
+    {
+      id: 'lb-1',
+      rank: 1,
+      name: 'মাওলানা তাওহীদুল ইসলাম',
+      avatar: '',
+      correctAnswers: 10,
+      wrongAnswers: 0,
+      score: 10.0,
+      totalMarks: 10,
+      timeSpentSeconds: 45,
+    },
+    {
+      id: 'lb-2',
+      rank: 2,
+      name: 'মুহাম্মদ জোবায়ের হোসাইন',
+      avatar: '',
+      correctAnswers: 10,
+      wrongAnswers: 0,
+      score: 10.0,
+      totalMarks: 10,
+      timeSpentSeconds: 52,
+    },
+    {
+      id: 'lb-3',
+      rank: 3,
+      name: 'আব্দুল করিম আল-মাদানী',
+      avatar: '',
+      correctAnswers: 9,
+      wrongAnswers: 1,
+      score: 8.75,
+      totalMarks: 10,
+      timeSpentSeconds: 58,
+    },
+    {
+      id: 'lb-4',
+      rank: 4,
+      name: 'ফাতেমা আক্তার সুরভী',
+      avatar: '',
+      correctAnswers: 9,
+      wrongAnswers: 1,
+      score: 8.75,
+      totalMarks: 10,
+      timeSpentSeconds: 65,
+    },
+    {
+      id: 'lb-5',
+      rank: 5,
+      name: 'মুহাম্মদ আব্দুল্লাহ আল-মামুন',
+      avatar: '',
+      correctAnswers: 8,
+      wrongAnswers: 2,
+      score: 7.50,
+      totalMarks: 10,
+      timeSpentSeconds: 70,
+      isCurrentUser: true,
+    },
+    {
+      id: 'lb-6',
+      rank: 6,
+      name: 'ইসমাইল হোসেন ফাহিম',
+      avatar: '',
+      correctAnswers: 7,
+      wrongAnswers: 2,
+      score: 6.50,
+      totalMarks: 10,
+      timeSpentSeconds: 62,
+    },
+    {
+      id: 'lb-7',
+      rank: 7,
+      name: 'তাসনিম জাহান নাদিয়া',
+      avatar: '',
+      correctAnswers: 7,
+      wrongAnswers: 3,
+      score: 6.25,
+      totalMarks: 10,
+      timeSpentSeconds: 80,
+    },
+    {
+      id: 'lb-8',
+      rank: 8,
+      name: 'আরিফুর রহমান সাকিব',
+      avatar: '',
+      correctAnswers: 6,
+      wrongAnswers: 4,
+      score: 5.00,
+      totalMarks: 10,
+      timeSpentSeconds: 90,
+    }
+  ]
+};
 
 export const mockNotices: Notice[] = [
   {

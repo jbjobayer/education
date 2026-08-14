@@ -23,7 +23,7 @@ import { mockExams } from '../../data/mockData';
 import { Exam } from '../../types';
 
 export const ExamsView: React.FC = () => {
-  const { startExam, examResults, setViewingResult } = useApp();
+  const { startExam, examResults, setViewingResult, setResultSubTab } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'free'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
@@ -330,18 +330,24 @@ export const ExamsView: React.FC = () => {
                   {isCompleted ? (
                     <div className="grid grid-cols-2 gap-2.5">
                       <button
-                        onClick={() => setViewingResult(completedResult)}
-                        className="w-full py-2.5 sm:py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-[#004d2e] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                        onClick={() => {
+                          setResultSubTab('explanation');
+                          setViewingResult(completedResult);
+                        }}
+                        className="w-full py-2.5 sm:py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-[#004d2e] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-98"
                       >
                         <BookOpen className="w-4 h-4" />
                         <span>ব্যাখ্যা সহ উত্তর</span>
                       </button>
 
                       <button
-                        onClick={() => setViewingResult(completedResult)}
-                        className="w-full py-2.5 sm:py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                        onClick={() => {
+                          setResultSubTab('leaderboard');
+                          setViewingResult(completedResult);
+                        }}
+                        className="w-full py-2.5 sm:py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-98"
                       >
-                        <Trophy className="w-4 h-4 text-amber-600" />
+                        <Trophy className="w-4 h-4 text-amber-600 fill-amber-500" />
                         <span>মেধাতালিকা</span>
                       </button>
                     </div>
