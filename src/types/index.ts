@@ -26,6 +26,33 @@ export type CourseCategory =
   | 'subject_wise'
   | 'special_batch';
 
+export interface CourseLectureSheet {
+  id: string;
+  title: string;
+  subtitle: string; // e.g. 'PDF Sheet 01'
+  fileSize?: string;
+  pagesCount?: number;
+  downloadUrl?: string;
+  isFree?: boolean;
+}
+
+export interface CourseExamItem {
+  id: string;
+  examNumber: string; // e.g. 'পরীক্ষা ০১'
+  title: string;
+  topic: string;
+  dateStr: string; // e.g. '১৫ আগস্ট, ২০২৬ (শনিবার)'
+  questionCount: number;
+  durationMinutes: number;
+  isLocked?: boolean;
+  examRefId?: string;
+}
+
+export interface CourseOverviewSection {
+  title: string;
+  items: string[];
+}
+
 export interface Course {
   id: string;
   title: string;
@@ -41,13 +68,18 @@ export interface Course {
   totalStudents: number;
   totalClasses: number;
   totalSheets?: number;
+  totalFullModels?: number | string;
   totalExams: number;
   duration: string;
   startDate: string;
   instructors: Instructor[];
   description: string;
+  detailedOverview?: string;
+  overviewSections?: CourseOverviewSection[];
   features: string[];
   syllabus: SyllabusTopic[];
+  sheets?: CourseLectureSheet[];
+  courseExams?: CourseExamItem[];
   isEnrolled?: boolean;
 }
 

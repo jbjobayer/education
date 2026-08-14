@@ -20,9 +20,9 @@ import { ProfileView } from './components/views/ProfileView';
 import { CircularsView } from './components/views/CircularsView';
 import { SubjectWiseView } from './components/views/SubjectWiseView';
 import { ResultView } from './components/views/ResultView';
+import { CourseDetailsView } from './components/views/CourseDetailsView';
 
 // Modals & Drawers
-import { CourseDetailsModal } from './components/modals/CourseDetailsModal';
 import { CheckoutDrawer } from './components/modals/CheckoutDrawer';
 import { ExamModal } from './components/modals/ExamModal';
 import { RoutineModal } from './components/modals/RoutineModal';
@@ -30,7 +30,7 @@ import { NotificationDrawer } from './components/modals/NotificationDrawer';
 import { FontSettingsModal } from './components/modals/FontSettingsModal';
 
 const MainContent: React.FC = () => {
-  const { activeTab, viewingResult } = useApp();
+  const { activeTab, viewingResult, selectedCourseDetails } = useApp();
 
   return (
     <div className="min-h-screen bg-[#e9edf5] dark:bg-[#0d1522] text-slate-800 dark:text-slate-100 flex flex-col justify-between selection:bg-emerald-600 selection:text-white transition-colors duration-200">
@@ -42,6 +42,8 @@ const MainContent: React.FC = () => {
         {/* If viewing a completed exam result, render as a dedicated inline page (No popup) */}
         {viewingResult ? (
           <ResultView />
+        ) : selectedCourseDetails ? (
+          <CourseDetailsView />
         ) : (
           <>
             {activeTab === 'home' && <HomeView />}
@@ -59,7 +61,6 @@ const MainContent: React.FC = () => {
       <BottomNavigation />
 
       {/* Modals & Overlays */}
-      <CourseDetailsModal />
       <CheckoutDrawer />
       <ExamModal />
       <RoutineModal />
