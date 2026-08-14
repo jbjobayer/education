@@ -3,38 +3,76 @@ import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { useFont } from '../context/FontContext';
 import { 
-  Bell, 
   Search, 
   GraduationCap, 
+  Moon, 
+  Sun, 
+  X, 
+  ArrowLeft,
+  Home,
+  FileText,
   BookOpen,
-  Moon,
-  Sun,
-  Type,
-  X,
-  ArrowLeft
+  Sparkles,
+  Briefcase,
+  Layers
 } from 'lucide-react';
-import { CourseCategory } from '../types';
+import { MainTab } from '../types';
 
 export const Header: React.FC = () => {
   const { 
-    selectedCategory, 
-    setSelectedCategory, 
-    setIsNotificationOpen, 
     searchQuery, 
     setSearchQuery,
     activeTab,
-    setActiveTab
+    setActiveTab,
+    setSelectedCategory
   } = useApp();
 
   const { isDark, toggleTheme } = useTheme();
-  const { setIsFontModalOpen, settings } = useFont();
+  const { setIsFontModalOpen } = useFont();
 
-  const categories: { id: CourseCategory; label: string }[] = [
-    { id: 'all', label: 'সব কোর্স' },
-    { id: 'madrasah_ntrca', label: 'মাদ্রাসা শিক্ষক নিবন্ধন' },
-    { id: 'general_ntrca', label: 'জেনারেল NTRCA' },
-    { id: 'arabic_language', label: 'আরবি ভাষা ও ব্যাকরণ' },
-    { id: 'subject_wise', label: 'বিষয়ভিত্তিক টেস্ট' },
+  const navTabs: {
+    id: MainTab;
+    label: string;
+    icon: React.ElementType;
+    badge?: string;
+    badgeColor?: string;
+  }[] = [
+    {
+      id: 'home',
+      label: 'হোম',
+      icon: Home,
+    },
+    {
+      id: 'exams',
+      label: 'পরীক্ষা দিন',
+      icon: FileText,
+    },
+    {
+      id: 'courses',
+      label: 'কোর্স',
+      icon: BookOpen,
+      badge: 'নতুন',
+      badgeColor: 'bg-red-500 text-white',
+    },
+    {
+      id: 'ai',
+      label: 'তামরীন এআই',
+      icon: Sparkles,
+      badge: 'AI',
+      badgeColor: 'bg-amber-400 text-slate-950 font-black',
+    },
+    {
+      id: 'circular',
+      label: 'সার্কুলার',
+      icon: Briefcase,
+      badge: '৩টি',
+      badgeColor: 'bg-red-500 text-white',
+    },
+    {
+      id: 'subject_wise',
+      label: 'বিষয়ভিত্তিক প্রস্তুতি',
+      icon: Layers,
+    },
   ];
 
   return (
@@ -46,7 +84,7 @@ export const Header: React.FC = () => {
           {activeTab !== 'home' ? (
             <button
               onClick={() => setActiveTab('home')}
-              className="w-10 h-10 rounded-2xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform active:scale-95 shrink-0"
+              className="w-10 h-10 rounded-2xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform active:scale-95 shrink-0 cursor-pointer"
               title="হোমে ফিরে যান"
             >
               <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
@@ -91,7 +129,7 @@ export const Header: React.FC = () => {
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white/70 dark:bg-slate-700 rounded-full w-5 h-5 flex items-center justify-center"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white/70 dark:bg-slate-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -104,7 +142,7 @@ export const Header: React.FC = () => {
           {/* Font & Arabic Harakat Switcher Button - Clean T icon */}
           <button
             onClick={() => setIsFontModalOpen(true)}
-            className="w-10 h-10 rounded-2xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform active:scale-95 shrink-0"
+            className="w-10 h-10 rounded-2xl neu-btn text-amber-600 dark:text-amber-400 flex items-center justify-center transition-transform active:scale-95 shrink-0 cursor-pointer"
             title="বাংলা ও আরবি ফন্ট সেটিংস (T)"
           >
             <span className="font-black text-base leading-none text-amber-600 dark:text-amber-400 font-sans">
@@ -115,7 +153,7 @@ export const Header: React.FC = () => {
           {/* Theme Toggle Button (Light/Dark) */}
           <button
             onClick={toggleTheme}
-            className="w-10 h-10 rounded-2xl neu-btn text-slate-700 dark:text-amber-400 flex items-center justify-center transition-transform active:scale-95 shrink-0"
+            className="w-10 h-10 rounded-2xl neu-btn text-slate-700 dark:text-amber-400 flex items-center justify-center transition-transform active:scale-95 shrink-0 cursor-pointer"
             title={isDark ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
           >
             {isDark ? (
@@ -128,7 +166,7 @@ export const Header: React.FC = () => {
           {/* Profile Avatar Button */}
           <button
             onClick={() => setActiveTab('profile')}
-            className="w-10 h-10 rounded-full neu-btn p-0.5 flex items-center justify-center overflow-hidden transition-transform active:scale-95 shrink-0 border border-amber-400/40"
+            className="w-10 h-10 rounded-full neu-btn p-0.5 flex items-center justify-center overflow-hidden transition-transform active:scale-95 shrink-0 border border-amber-400/40 cursor-pointer"
             title="প্রোফাইল"
           >
             <img
@@ -140,7 +178,7 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Search Bar (matching screenshot) */}
+      {/* Mobile Search Bar */}
       <div className="px-4 pb-2.5 max-w-7xl mx-auto md:hidden">
         <div className="relative w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#005a36] dark:text-emerald-400" />
@@ -154,7 +192,7 @@ export const Header: React.FC = () => {
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white/70 dark:bg-slate-700 rounded-full w-5 h-5 flex items-center justify-center"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white/70 dark:bg-slate-700 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
             >
               <X className="w-3 h-3" />
             </button>
@@ -162,32 +200,35 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Category Filter Pills */}
-      <div className="border-t border-slate-200/60 dark:border-slate-800/80 bg-[#e4e9f2]/70 dark:bg-[#0b121d]/80 backdrop-blur-xs py-2 px-4 sm:px-6">
+      {/* Navigation Tabs Bar (Replacing old Categories) */}
+      <div className="border-t border-slate-200/60 dark:border-slate-800/80 bg-[#e4e9f2]/70 dark:bg-[#0b121d]/80 backdrop-blur-xs py-2 px-3 sm:px-6">
         <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-          <div className="flex items-center gap-1 text-xs font-bold text-[#005a36] dark:text-emerald-400 shrink-0 pr-1">
-            <BookOpen className="w-3.5 h-3.5 text-[#005a36] dark:text-emerald-400 stroke-[2.2]" />
-            <span>ক্যাটাগরি:</span>
-          </div>
+          {navTabs.map((tab) => {
+            const isSelected = activeTab === tab.id;
+            const Icon = tab.icon;
 
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
             return (
               <button
-                key={cat.id}
+                key={tab.id}
                 onClick={() => {
-                  setSelectedCategory(cat.id);
-                  if (activeTab !== 'courses' && activeTab !== 'home') {
-                    setActiveTab('courses');
+                  if (tab.id === 'courses') {
+                    setSelectedCategory('all');
                   }
+                  setActiveTab(tab.id);
                 }}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 select-none active:scale-95 ${
                   isSelected
-                    ? 'neu-btn text-[#b45309] dark:text-[#fbbf24] font-black border-2 border-[#fcd34d] dark:border-[#fbbf24] shadow-[2px_2px_6px_rgba(195,207,226,0.8),-2px_-2px_6px_rgba(255,255,255,0.9)] dark:shadow-[2px_2px_6px_rgba(0,0,0,0.6),-2px_-2px_6px_rgba(255,255,255,0.05)] bg-[#edf1f8] dark:bg-[#18263e]'
-                    : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#005a36] text-[#fbbf24] font-black border border-emerald-500/50 shadow-[2px_2px_8px_rgba(0,90,54,0.45)]'
+                    : 'neu-btn text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
-                {cat.label}
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#fbbf24]' : 'text-slate-500 dark:text-slate-400'}`} />
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full tracking-wider shadow-xs ${tab.badgeColor}`}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
