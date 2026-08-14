@@ -24,7 +24,8 @@ export const Header: React.FC = () => {
     setSearchQuery,
     activeTab,
     setActiveTab,
-    setSelectedCategory
+    setSelectedCategory,
+    userProfile
   } = useApp();
 
   const { isDark, toggleTheme } = useTheme();
@@ -166,14 +167,25 @@ export const Header: React.FC = () => {
           {/* Profile Avatar Button */}
           <button
             onClick={() => setActiveTab('profile')}
-            className="w-10 h-10 rounded-full neu-btn p-0.5 flex items-center justify-center overflow-hidden transition-transform active:scale-95 shrink-0 border border-amber-400/40 cursor-pointer"
-            title="প্রোফাইল"
+            className={`w-10 h-10 rounded-full p-0.5 flex items-center justify-center overflow-hidden transition-all active:scale-95 shrink-0 cursor-pointer ${
+              activeTab === 'profile'
+                ? 'ring-2 ring-[#005a36] dark:ring-emerald-400 shadow-[0_0_12px_rgba(0,90,54,0.5)]'
+                : 'neu-btn border border-amber-400/40'
+            }`}
+            title="আমার প্রোফাইল"
           >
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-              alt="ইউজার প্রোফাইল"
-              className="w-full h-full rounded-full object-cover"
-            />
+            {userProfile?.avatar ? (
+              <img
+                src={userProfile.avatar}
+                alt={userProfile.name || 'ইউজার প্রোফাইল'}
+                className="w-full h-full rounded-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-[#005a36] to-emerald-700 text-white flex items-center justify-center font-bold text-xs">
+                {userProfile?.name ? userProfile.name.slice(0, 1) : 'প'}
+              </div>
+            )}
           </button>
         </div>
       </div>
