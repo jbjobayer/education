@@ -5,20 +5,18 @@ import {
   ArrowLeft, 
   Clock, 
   CheckCircle2, 
-  AlertTriangle,
-  Send,
-  Sparkles,
-  Inbox
+  AlertTriangle, 
+  Send, 
+  Sparkles, 
+  Inbox 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ExamResult } from '../../types';
-
-// Helper to detect if a string contains Arabic characters
-const isArabic = (text?: string): boolean => {
-  if (!text) return false;
-  const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-  return arabicPattern.test(text);
-};
+import { 
+  getUnifiedQuestionText, 
+  getTextDirection, 
+  getOptionsConfig 
+} from '../../utils/questionUtils';
 
 export const ExamModal: React.FC = () => {
   const { activeExam, closeExam, saveExamResult } = useApp();
@@ -201,18 +199,13 @@ export const ExamModal: React.FC = () => {
           const selectedOption = answers[question.id];
           const hasSelected = selectedOption !== undefined;
           
-          // Detect if question is in Arabic or has arabic question text
-          const questionIsArabic = question.language === 'ar' || isArabic(question.arabicQuestion) || isArabic(question.question);
-          const defaultBnLabels = ['ক', 'খ', 'গ', 'ঘ'];
-          const defaultEnLabels = ['A', 'B', 'C', 'D'];
-          const defaultArLabels = ['أ', 'ب', 'ج', 'د'];
+          // Get clean unified question text and direction
+          const unifiedQuestion = getUnifiedQuestionText(question);
+          const formattedQuestion = formatArabicText(unifiedQuestion);
+          const { dir: qDir, textAlign: qTextAlign, isPureArabic: qIsPureArabic } = getTextDirection(unifiedQuestion);
 
-          // Determine option letter labels
-          const optionLabels = question.optionLabels || (
-            questionIsArabic 
-              ? defaultArLabels 
-              : (question.language === 'en' ? defaultEnLabels : defaultBnLabels)
-          );
+          // Get options majority configuration
+          const optionsConfig = getOptionsConfig(question.options, question.optionLabels);
 
           return (
             <div
@@ -225,42 +218,36 @@ export const ExamModal: React.FC = () => {
               }`}
             >
               {/* Top Question Row */}
-              <div className={`flex items-start gap-3 mb-4 ${questionIsArabic ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
+              <div 
+                className={`flex items-start gap-3 mb-4 ${
+                  qIsPureArabic ? 'flex-row-reverse text-right' : 'flex-row text-left'
+                }`}
+              >
                 {/* Question Index Badge */}
-                <div className="w-8 h-8 rounded-full bg-[#1e293b] dark:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-                  {questionIsArabic ? (qIndex + 1).toLocaleString('ar-EG') : (qIndex + 1).toLocaleString('bn-BD')}
+                <div className="w-8 h-8 rounded-full bg-[#1e293b] dark:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs mt-0.5 select-none">
+                  {qIsPureArabic ? (qIndex + 1).toLocaleString('ar-EG') : (qIndex + 1).toLocaleString('bn-BD')}
                 </div>
 
-                {/* Question Text (Arabic right-aligned, Bengali/English left-aligned) */}
-                <div className={`flex-1 ${questionIsArabic ? 'text-right' : 'text-left'}`}>
-                  {/* Arabic question text if available */}
-                  {question.arabicQuestion && (
-                    <p 
-                      className="font-arabic text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 leading-relaxed mb-1.5"
-                      dir="rtl"
-                    >
-                      {formatArabicText(question.arabicQuestion)}
-                    </p>
-                  )}
-
-                  {/* Main question statement */}
+                {/* Unified Question Text */}
+                <div className={`flex-1 ${qTextAlign}`}>
                   <h3 
-                    className={`font-bold text-sm sm:text-base text-slate-800 dark:text-slate-200 leading-relaxed ${
-                      questionIsArabic ? 'font-arabic text-base sm:text-lg' : ''
+                    className={`font-bold leading-relaxed text-slate-900 dark:text-slate-100 ${
+                      qIsPureArabic 
+                        ? 'font-arabic text-lg sm:text-xl font-black' 
+                        : 'text-sm sm:text-base'
                     }`}
-                    dir={questionIsArabic ? 'rtl' : 'ltr'}
+                    dir={qDir}
                   >
-                    {formatArabicText(question.question)}
+                    {formattedQuestion}
                   </h3>
                 </div>
               </div>
 
-              {/* Options Grid / List */}
+              {/* Options Grid / List adhering to Majority Language Direction */}
               <div className="space-y-2.5">
                 {question.options.map((opt, optIdx) => {
                   const isOptSelected = selectedOption === optIdx;
-                  const optIsArabic = isArabic(opt) || questionIsArabic;
-                  const label = optionLabels[optIdx] || defaultBnLabels[optIdx];
+                  const label = optionsConfig.labels[optIdx] || (optionsConfig.isRTL ? ['أ', 'ب', 'ج', 'د'][optIdx] : ['ক', 'খ', 'গ', 'ঘ'][optIdx]);
 
                   return (
                     <button
@@ -268,7 +255,7 @@ export const ExamModal: React.FC = () => {
                       type="button"
                       onClick={() => handleSelectOption(question.id, optIdx)}
                       className={`w-full p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer text-sm font-bold ${
-                        optIsArabic 
+                        optionsConfig.isRTL 
                           ? 'flex-row-reverse text-right' 
                           : 'flex-row text-left'
                       } ${
@@ -288,10 +275,10 @@ export const ExamModal: React.FC = () => {
 
                       {/* Option Text */}
                       <span 
-                        className={`flex-1 leading-snug font-medium ${
-                          optIsArabic ? 'font-arabic text-base font-bold' : 'text-xs sm:text-sm'
+                        className={`flex-1 leading-snug font-medium ${optionsConfig.textAlign} ${
+                          optionsConfig.isRTL ? 'font-arabic text-base font-bold' : 'text-xs sm:text-sm'
                         }`}
-                        dir={optIsArabic ? 'rtl' : 'ltr'}
+                        dir={optionsConfig.dir}
                       >
                         {formatArabicText(opt)}
                       </span>

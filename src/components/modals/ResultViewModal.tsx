@@ -16,6 +16,11 @@ import {
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { mockExams } from '../../data/mockData';
+import { 
+  getUnifiedQuestionText, 
+  getTextDirection, 
+  getOptionsConfig 
+} from '../../utils/questionUtils';
 
 export const ResultViewModal: React.FC = () => {
   const { viewingResult, setViewingResult, startExam, bookmarks, toggleBookmark } = useApp();
@@ -198,56 +203,118 @@ export const ResultViewModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Question Texts */}
-                {q.arabicQuestion && (
-                  <p 
-                    className="font-arabic text-lg sm:text-xl text-emerald-950 dark:text-emerald-300 font-black text-right leading-relaxed dir-rtl"
-                    dir="rtl"
-                  >
-                    {formatArabicText(q.arabicQuestion)}
-                  </p>
-                )}
-                <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 leading-snug">
-                  {q.question}
-                </h4>
+                {/* Question Top Header Bar */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black flex items-center justify-center select-none">
+                      {getTextDirection(getUnifiedQuestionText(q)).isPureArabic ? (idx + 1).toLocaleString('ar-EG') : (idx + 1).toLocaleString('bn-BD')}
+                    </span>
+                    <span className="text-[11px] font-extrabold text-[#004d2e] dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60">
+                      {q.subject}
+                    </span>
+                  </div>
 
-                {/* Options List */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {q.options.map((opt: string, optIdx: number) => {
-                    const isUserPick = userChoice === optIdx;
-                    const isRightAnswer = q.correctIndex === optIdx;
-                    const formattedOpt = formatArabicText(opt);
+                  <div className="flex items-center gap-2">
+                    {isCorrect ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-black flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> সঠিক (+১.০)
+                      </span>
+                    ) : isSkipped ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1">
+                        <MinusCircle className="w-3.5 h-3.5 text-slate-500" /> উত্তর দেননি
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-black flex items-center gap-1">
+                        <XCircle className="w-3.5 h-3.5 text-red-600" /> ভুল উত্তর (-০.২৫)
+                      </span>
+                    )}
 
-                    let badgeStyle = 'neu-btn text-slate-700 dark:text-slate-200';
-                    if (isRightAnswer) {
-                      badgeStyle = 'bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-600 dark:border-emerald-500 text-emerald-950 dark:text-emerald-200 font-black shadow-xs';
-                    } else if (isUserPick && !isRightAnswer) {
-                      badgeStyle = 'bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 line-through';
-                    }
+                    <button
+                      onClick={() => toggleBookmark(q.id)}
+                      className="p-1.5 rounded-lg neu-btn text-slate-400 hover:text-amber-500 transition-colors"
+                      title="বুকমার্ক"
+                    >
+                      <Award className={`w-4 h-4 ${isBookmarked ? 'fill-amber-400 text-amber-500' : ''}`} />
+                    </button>
+                  </div>
+                </div>
 
-                    return (
-                      <div
-                        key={optIdx}
-                        className={`p-3 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-2 ${badgeStyle}`}
+                {/* Unified Question Text */}
+                {(() => {
+                  const unifiedText = getUnifiedQuestionText(q);
+                  const formattedQ = formatArabicText(unifiedText);
+                  const { dir, textAlign, isPureArabic } = getTextDirection(unifiedText);
+                  const optConfig = getOptionsConfig(q.options, q.optionLabels);
+                  const expDir = getTextDirection(q.explanation);
+
+                  return (
+                    <>
+                      <h4 
+                        className={`leading-relaxed text-slate-900 dark:text-slate-100 ${textAlign} ${
+                          isPureArabic ? 'font-arabic text-lg sm:text-xl font-black' : 'font-bold text-sm sm:text-base'
+                        }`}
+                        dir={dir}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-white/90 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-black flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-700">
-                            {['ক', 'খ', 'গ', 'ঘ'][optIdx]}
-                          </span>
-                          <span>{formattedOpt}</span>
-                        </div>
-                        {isRightAnswer && <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />}
-                        {isUserPick && !isRightAnswer && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
-                      </div>
-                    );
-                  })}
-                </div>
+                        {formattedQ}
+                      </h4>
 
-                {/* Static Explanation Inset */}
-                <div className="p-3.5 neu-inset rounded-2xl text-xs sm:text-sm text-slate-800 space-y-1">
-                  <span className="font-bold text-emerald-950 block">ব্যাখ্যা ও নিয়ম:</span>
-                  <p className="text-slate-600 leading-relaxed font-normal">{q.explanation}</p>
-                </div>
+                      {/* Options List */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                        {q.options.map((opt: string, optIdx: number) => {
+                          const isUserPick = userChoice === optIdx;
+                          const isRightAnswer = q.correctIndex === optIdx;
+                          const formattedOpt = formatArabicText(opt);
+                          const label = optConfig.labels[optIdx] || (optConfig.isRTL ? ['أ', 'ب', 'ج', 'د'][optIdx] : ['ক', 'খ', 'গ', 'ঘ'][optIdx]);
+
+                          let badgeStyle = 'neu-btn text-slate-700 dark:text-slate-200';
+                          if (isRightAnswer) {
+                            badgeStyle = 'bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-600 dark:border-emerald-500 text-emerald-950 dark:text-emerald-200 font-black shadow-xs';
+                          } else if (isUserPick && !isRightAnswer) {
+                            badgeStyle = 'bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-300 line-through';
+                          }
+
+                          return (
+                            <div
+                              key={optIdx}
+                              className={`p-3 rounded-2xl text-xs sm:text-sm flex items-center justify-between gap-2 ${
+                                optConfig.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'
+                              } ${badgeStyle}`}
+                            >
+                              <div className={`flex items-center gap-2 flex-1 min-w-0 ${optConfig.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
+                                <span className="w-6 h-6 rounded-lg bg-white/90 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-black flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-700">
+                                  {label}
+                                </span>
+                                <span 
+                                  className={`font-medium leading-snug flex-1 ${optConfig.textAlign} ${
+                                    optConfig.isRTL ? 'font-arabic text-sm sm:text-base font-bold' : ''
+                                  }`}
+                                  dir={optConfig.dir}
+                                >
+                                  {formattedOpt}
+                                </span>
+                              </div>
+                              {isRightAnswer && <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />}
+                              {isUserPick && !isRightAnswer && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Static Explanation Inset */}
+                      <div className="p-3.5 neu-inset rounded-2xl text-xs sm:text-sm text-slate-800 space-y-1">
+                        <span className="font-bold text-emerald-950 block">ব্যাখ্যা ও নিয়ম:</span>
+                        <p 
+                          className={`text-slate-600 leading-relaxed ${expDir.textAlign} ${
+                            expDir.isPureArabic ? 'font-arabic text-sm sm:text-base font-medium' : 'font-normal'
+                          }`}
+                          dir={expDir.dir}
+                        >
+                          {formatArabicText(q.explanation)}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Tamreen AI Instant Deep Explanation */}
                 {aiData?.loading ? (

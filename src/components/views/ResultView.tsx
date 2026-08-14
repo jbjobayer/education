@@ -22,6 +22,11 @@ import {
 import Markdown from 'react-markdown';
 import { mockExams, mockLeaderboardData } from '../../data/mockData';
 import { LeaderboardEntry } from '../../types';
+import { 
+  getUnifiedQuestionText, 
+  getTextDirection, 
+  getOptionsConfig 
+} from '../../utils/questionUtils';
 
 export const ResultView: React.FC = () => {
   const { 
@@ -150,6 +155,14 @@ export const ResultView: React.FC = () => {
     );
   };
 
+  const formatDuration = (seconds: number) => {
+    const s = Math.max(0, Math.floor(seconds || 0));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-4 sm:space-y-5 pb-24 animate-fadeIn">
       {/* 1. Sticky Navigation Bar */}
@@ -165,108 +178,158 @@ export const ResultView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={handleShareResult}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-[#004d2e] dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-all active:scale-95 cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 text-sky-700 dark:text-sky-300 text-xs font-bold border border-sky-200 dark:border-sky-800/60 transition-all active:scale-95 cursor-pointer shadow-xs"
           >
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5" />}
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-sky-600" /> : <Share2 className="w-3.5 h-3.5" />}
             <span>{copiedLink ? 'কপি হয়েছে' : 'ফলাফল শেয়ার করুন'}</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Top Green Hero Card */}
-      <div className="bg-gradient-to-b from-[#023b24] via-[#004d2e] to-[#013821] text-white rounded-3xl p-5 sm:p-7 shadow-lg relative overflow-hidden text-center space-y-4">
-        {/* Glow Effects */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-36 h-36 bg-[#fbbf24]/10 rounded-full blur-xl pointer-events-none"></div>
+      {/* 2. Top Profile Header Banner Card (Vibrant Cyan / Sky Blue Premium Layout) */}
+      <div className="bg-gradient-to-r from-[#0284c7] via-[#0369a1] to-[#0ea5e9] dark:from-[#0369a1] dark:via-[#075985] dark:to-[#0c4a6e] text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-sky-400/30 flex items-center justify-between gap-3 sm:gap-4 relative overflow-hidden">
+        {/* Subtle Ambient Lighting */}
+        <div className="absolute top-0 right-0 w-48 h-48 bg-sky-300/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-36 h-36 bg-cyan-300/15 rounded-full blur-xl pointer-events-none" />
 
-        {/* Top Gold Badge */}
-        <div className="inline-flex items-center gap-1.5 bg-[#012d1b]/80 border border-[#fbbf24]/40 text-[#fbbf24] px-3.5 py-1 rounded-full text-xs font-black shadow-inner">
-          <Award className="w-3.5 h-3.5 text-amber-300" />
-          <span>পরীক্ষার ফলাফল ও মূল্যায়ন</span>
-        </div>
-
-        {/* Exam Title */}
-        <div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-snug">
-            {viewingResult.examTitle}
-          </h2>
-          <p className="text-xs sm:text-sm text-emerald-100/80 font-medium mt-1">
-            বিষয়: {exam.subject} • তারিখ: {viewingResult.date} • মোট সময়: {Math.floor(viewingResult.timeSpentSeconds / 60)} মিনিট {viewingResult.timeSpentSeconds % 60} সেকেন্ড
-          </p>
-        </div>
-
-        {/* 4 Inset Score Badges in Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 max-w-2xl mx-auto">
-          {/* 1. Score */}
-          <div className="bg-[#02331f]/90 border border-emerald-600/40 rounded-2xl p-3 text-center shadow-sm">
-            <span className="text-[11px] text-emerald-200/80 font-semibold block">প্রাপ্ত নম্বর</span>
-            <div className="text-xl font-black text-white mt-0.5">
-              {viewingResult.score} <span className="text-xs font-normal text-emerald-300/70">/ {viewingResult.totalMarks}</span>
-            </div>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full mt-1 inline-block ${
-              isPassed ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/30' : 'bg-red-500/30 text-red-300 border border-red-400/30'
-            }`}>
-              {isPassed ? 'উত্তীর্ণ' : 'অনুত্তীর্ণ'} ({percentage}%)
-            </span>
+        <div className="flex items-center gap-3.5 sm:gap-4 z-10 min-w-0">
+          {/* Avatar Container in Clean White Box */}
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white dark:bg-slate-900 p-1 flex items-center justify-center shadow-md shrink-0 border border-white/60">
+            {userProfile.avatar && userProfile.avatar.trim() !== '' && !userProfile.avatar.includes('unsplash') ? (
+              <img
+                src={userProfile.avatar}
+                alt={userProfile.name}
+                className="w-full h-full rounded-xl object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white flex items-center justify-center shadow-inner">
+                <UserIcon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+              </div>
+            )}
           </div>
 
-          {/* 2. Correct Answers */}
-          <div className="bg-[#02331f]/90 border border-emerald-600/40 rounded-2xl p-3 text-center shadow-sm">
-            <span className="text-[11px] text-emerald-200/80 font-semibold block">সঠিক উত্তর</span>
-            <div className="text-xl font-black text-emerald-300 flex items-center justify-center gap-1 mt-0.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>{viewingResult.correctAnswers}</span>
+          {/* User Name & Exam Information */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <UserIcon className="w-4 h-4 text-sky-200 shrink-0" />
+              <h2 className="text-base sm:text-xl font-black text-white truncate leading-tight">
+                {userProfile.name || 'Jobayer Ahmed'}
+              </h2>
             </div>
-            <span className="text-[10px] text-emerald-300/70 font-medium">{viewingResult.correctAnswers}টি সঠিক</span>
-          </div>
-
-          {/* 3. Wrong Answers */}
-          <div className="bg-[#02331f]/90 border border-emerald-600/40 rounded-2xl p-3 text-center shadow-sm">
-            <span className="text-[11px] text-emerald-200/80 font-semibold block">ভুল উত্তর</span>
-            <div className="text-xl font-black text-rose-300 flex items-center justify-center gap-1 mt-0.5">
-              <XCircle className="w-4 h-4 text-rose-400" />
-              <span>{viewingResult.wrongAnswers}</span>
-            </div>
-            <span className="text-[10px] text-rose-300/80 font-semibold">(-{(viewingResult.wrongAnswers * (exam.negativeMarking || 0.25)).toFixed(2)})</span>
-          </div>
-
-          {/* 4. Merit Rank */}
-          <div className="bg-[#02331f]/90 border border-emerald-600/40 rounded-2xl p-3 text-center shadow-sm">
-            <span className="text-[11px] text-emerald-200/80 font-semibold block">মেধা স্থান</span>
-            <div className="text-xl font-black text-[#fbbf24] flex items-center justify-center gap-1 mt-0.5">
-              <Trophy className="w-4 h-4 text-amber-300 fill-amber-300" />
-              <span>{userRankEntry.rank}তম</span>
-            </div>
-            <span className="text-[10px] text-emerald-200/80 font-medium">/{leaderboardList.length} জনের মধ্যে</span>
+            <p className="text-xs sm:text-sm text-sky-100/90 font-medium truncate mt-1">
+              পরীক্ষা: {viewingResult.examTitle}
+            </p>
           </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <button
-            onClick={() => setResultSubTab('explanation')}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer ${
-              resultSubTab === 'explanation'
-                ? 'bg-white text-[#004d2e] shadow-lg scale-102'
-                : 'bg-[#02331f]/80 text-emerald-100 hover:bg-[#03442a] border border-emerald-600/40'
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>ব্যাখ্যা সহ উত্তর</span>
-          </button>
-
-          <button
-            onClick={() => setResultSubTab('leaderboard')}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer ${
-              resultSubTab === 'leaderboard'
-                ? 'bg-[#fbbf24] text-[#02331f] shadow-lg scale-102 font-black'
-                : 'bg-[#02331f]/80 text-emerald-100 hover:bg-[#03442a] border border-emerald-600/40'
-            }`}
-          >
-            <Trophy className="w-4 h-4 fill-current" />
-            <span>মেধাতালিকা (Leaderboard)</span>
-          </button>
+        {/* Evaluation Pill Badge */}
+        <div className="hidden sm:flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-black text-white border border-white/30 shrink-0 shadow-xs">
+          <Award className="w-4 h-4 text-amber-300" />
+          <span>মূল্যায়নপত্র</span>
         </div>
+      </div>
+
+      {/* 3. Structured 2-Column Statistics Table Card (Exact format as provided image) */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-2.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-slate-200/90 dark:border-slate-800 space-y-1.5">
+        {/* Row 1: মোট প্রশ্ন */}
+        <div className="bg-[#f1f5f9] dark:bg-slate-800/70 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-slate-800 dark:text-slate-200">মোট প্রশ্ন</span>
+          <span className="text-slate-800 dark:text-slate-200 font-black">
+            {exam.questions.length || viewingResult.totalMarks}
+          </span>
+        </div>
+
+        {/* Row 2: অংশ গ্রহণকারী */}
+        <div className="bg-[#f8fafc] dark:bg-slate-800/40 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-slate-800 dark:text-slate-200">অংশ গ্রহণকারী</span>
+          <span className="text-slate-800 dark:text-slate-200 font-black">
+            {leaderboardList.length}
+          </span>
+        </div>
+
+        {/* Row 3: সঠিক উত্তর */}
+        <div className="bg-[#f1f5f9] dark:bg-slate-800/70 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-emerald-600 dark:text-emerald-400 font-black">সঠিক উত্তর</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-black text-base sm:text-lg">
+            {viewingResult.correctAnswers}
+          </span>
+        </div>
+
+        {/* Row 4: ভুল উত্তর */}
+        <div className="bg-[#f8fafc] dark:bg-slate-800/40 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-rose-600 dark:text-rose-400 font-black">ভুল উত্তর</span>
+          <span className="text-rose-600 dark:text-rose-400 font-black text-base sm:text-lg">
+            {viewingResult.wrongAnswers}
+          </span>
+        </div>
+
+        {/* Row 5: নেগেটিভ মার্ক */}
+        <div className="bg-[#f1f5f9] dark:bg-slate-800/70 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-rose-600 dark:text-rose-400 font-black">নেগেটিভ মার্ক</span>
+          <span className="text-rose-600 dark:text-rose-400 font-black text-base sm:text-lg">
+            {((viewingResult.wrongAnswers || 0) * (exam.negativeMarking || 0.25)).toFixed(2)}
+          </span>
+        </div>
+
+        {/* Row 6: বর্তমান পজিশন */}
+        <div className="bg-[#f8fafc] dark:bg-slate-800/40 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-blue-600 dark:text-sky-400 font-black">বর্তমান পজিশন</span>
+          <span className="text-blue-600 dark:text-sky-400 font-black">
+            {userRankEntry.rank}th of {leaderboardList.length}
+          </span>
+        </div>
+
+        {/* Row 7: প্রাপ্ত নম্বর */}
+        <div className="bg-[#f1f5f9] dark:bg-slate-800/70 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-cyan-600 dark:text-cyan-400 font-black">প্রাপ্ত নম্বর</span>
+          <span className="text-cyan-600 dark:text-cyan-400 font-black text-base sm:text-lg">
+            {viewingResult.score}
+          </span>
+        </div>
+
+        {/* Row 8: রেজাল্ট */}
+        <div className="bg-[#f8fafc] dark:bg-slate-800/40 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-slate-900 dark:text-slate-100 font-black">রেজাল্ট</span>
+          <span className={`font-black text-base sm:text-lg ${isPassed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+            {isPassed ? 'Passed' : 'Failed'}
+          </span>
+        </div>
+
+        {/* Row 9: সময় গ্রহণ */}
+        <div className="bg-[#f1f5f9] dark:bg-slate-800/70 hover:bg-[#e8eef5] dark:hover:bg-slate-800 transition-colors rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between text-sm sm:text-base font-bold">
+          <span className="text-slate-800 dark:text-slate-200">সময় গ্রহণ</span>
+          <span className="text-slate-800 dark:text-slate-200 font-mono font-black">
+            {formatDuration(viewingResult.timeSpentSeconds || 76)}
+          </span>
+        </div>
+      </div>
+
+      {/* 4. Sub-Tab Switcher (Leaderboard vs Detailed Solutions) */}
+      <div className="flex items-center justify-center gap-2 p-1.5 bg-slate-200/70 dark:bg-slate-800/80 rounded-2xl max-w-md mx-auto shadow-inner">
+        <button
+          onClick={() => setResultSubTab('leaderboard')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            resultSubTab === 'leaderboard'
+              ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-md scale-102'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Trophy className="w-4 h-4 fill-current" />
+          <span>মেধাতালিকা</span>
+        </button>
+
+        <button
+          onClick={() => setResultSubTab('explanation')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            resultSubTab === 'explanation'
+              ? 'bg-white dark:bg-slate-900 text-[#004d2e] dark:text-emerald-400 shadow-md scale-102 border border-slate-200 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>ব্যাখ্যা সহ উত্তর</span>
+        </button>
       </div>
 
       {/* 3. Tab Content: SUB-TAB A - LEADERBOARD (মেধাতালিকা) */}
@@ -459,9 +522,17 @@ export const ResultView: React.FC = () => {
             const aiData = aiExplanations[q.id];
             const isBookmarked = bookmarks.includes(q.id);
 
-            const defaultBnLabels = ['ক', 'খ', 'গ', 'ঘ'];
-            const defaultArLabels = ['أ', 'ب', 'ج', 'দ'];
-            const labels = q.optionLabels || (q.language === 'ar' ? defaultArLabels : defaultBnLabels);
+            // Question text & direction config
+            const unifiedQuestion = getUnifiedQuestionText(q);
+            const formattedQuestion = formatArabicText(unifiedQuestion);
+            const { dir: qDir, textAlign: qTextAlign, isPureArabic: qIsPureArabic } = getTextDirection(unifiedQuestion);
+
+            // Options majority configuration
+            const optionsConfig = getOptionsConfig(q.options, q.optionLabels);
+
+            // Explanation direction config
+            const expUnified = formatArabicText(q.explanation);
+            const expDirConfig = getTextDirection(q.explanation);
 
             return (
               <div
@@ -477,8 +548,8 @@ export const ResultView: React.FC = () => {
                 {/* Question Top Header Bar */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black flex items-center justify-center">
-                      {(idx + 1).toLocaleString('bn-BD')}
+                    <span className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-black flex items-center justify-center select-none">
+                      {qIsPureArabic ? (idx + 1).toLocaleString('ar-EG') : (idx + 1).toLocaleString('bn-BD')}
                     </span>
                     <span className="text-[11px] font-extrabold text-[#004d2e] dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60">
                       {q.subject}
@@ -510,25 +581,25 @@ export const ResultView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Question Arabic / Bengali text */}
-                {q.arabicQuestion && (
-                  <p 
-                    className="font-arabic text-lg sm:text-xl text-[#004d2e] dark:text-emerald-300 font-black text-right leading-relaxed"
-                    dir="rtl"
-                  >
-                    {formatArabicText(q.arabicQuestion)}
-                  </p>
-                )}
-                <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 leading-relaxed">
-                  {formatArabicText(q.question)}
+                {/* Unified Question Text with Strict Direction Logic */}
+                <h4 
+                  className={`leading-relaxed text-slate-900 dark:text-slate-100 ${qTextAlign} ${
+                    qIsPureArabic 
+                      ? 'font-arabic text-lg sm:text-xl font-black' 
+                      : 'font-bold text-sm sm:text-base'
+                  }`}
+                  dir={qDir}
+                >
+                  {formattedQuestion}
                 </h4>
 
-                {/* 4 Options Grid */}
+                {/* 4 Options Grid with Majority Language Direction */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                   {q.options.map((opt: string, optIdx: number) => {
                     const isUserPick = userChoice === optIdx;
                     const isRightAnswer = q.correctIndex === optIdx;
                     const formattedOpt = formatArabicText(opt);
+                    const label = optionsConfig.labels[optIdx] || (optionsConfig.isRTL ? ['أ', 'ب', 'ج', 'د'][optIdx] : ['ক', 'খ', 'গ', 'ঘ'][optIdx]);
 
                     let badgeStyle = 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300';
                     if (isRightAnswer) {
@@ -540,13 +611,22 @@ export const ResultView: React.FC = () => {
                     return (
                       <div
                         key={optIdx}
-                        className={`p-3 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-2 transition-all ${badgeStyle}`}
+                        className={`p-3 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-2 transition-all ${
+                          optionsConfig.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'
+                        } ${badgeStyle}`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className={`flex items-center gap-2 flex-1 min-w-0 ${optionsConfig.isRTL ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
                           <span className="w-6 h-6 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-black flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-700 shadow-xs">
-                            {labels[optIdx] || defaultBnLabels[optIdx]}
+                            {label}
                           </span>
-                          <span className="font-medium">{formattedOpt}</span>
+                          <span 
+                            className={`font-medium leading-snug flex-1 ${optionsConfig.textAlign} ${
+                              optionsConfig.isRTL ? 'font-arabic text-sm sm:text-base font-bold' : ''
+                            }`}
+                            dir={optionsConfig.dir}
+                          >
+                            {formattedOpt}
+                          </span>
                         </div>
                         {isRightAnswer && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                         {isUserPick && !isRightAnswer && <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />}
@@ -558,7 +638,14 @@ export const ResultView: React.FC = () => {
                 {/* Explanation Inset Box */}
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-xs sm:text-sm text-slate-800 dark:text-slate-200 space-y-1">
                   <span className="font-extrabold text-[#004d2e] dark:text-emerald-400 block">ব্যাখ্যা ও নিয়ম:</span>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-normal">{q.explanation}</p>
+                  <p 
+                    className={`text-slate-600 dark:text-slate-400 leading-relaxed ${expDirConfig.textAlign} ${
+                      expDirConfig.isPureArabic ? 'font-arabic text-sm sm:text-base font-medium' : 'font-normal'
+                    }`}
+                    dir={expDirConfig.dir}
+                  >
+                    {expUnified}
+                  </p>
                 </div>
 
                 {/* AI Explanation Accordion / Card */}

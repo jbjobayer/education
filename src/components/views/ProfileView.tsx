@@ -18,6 +18,8 @@ import {
   Video
 } from 'lucide-react';
 import { mockQuestions } from '../../data/mockData';
+import { useFont } from '../../context/FontContext';
+import { getUnifiedQuestionText, getTextDirection } from '../../utils/questionUtils';
 
 export const ProfileView: React.FC = () => {
   const { 
@@ -32,6 +34,7 @@ export const ProfileView: React.FC = () => {
     setIsRoutineOpen,
     showToast 
   } = useApp();
+  const { formatArabicText } = useFont();
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(userProfile.name);
@@ -229,30 +232,38 @@ export const ProfileView: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-3.5">
-            {bookmarkedQuestions.map((q) => (
-              <div key={q.id} className="p-5 rounded-3xl neu-card space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-md">
-                    {q.subject}
-                  </span>
-                  <button
-                    onClick={() => toggleBookmark(q.id)}
-                    className="text-xs text-red-600 hover:underline font-bold"
+            {bookmarkedQuestions.map((q) => {
+              const unifiedText = getUnifiedQuestionText(q);
+              const formattedQ = formatArabicText(unifiedText);
+              const { dir, textAlign, isPureArabic } = getTextDirection(unifiedText);
+
+              return (
+                <div key={q.id} className="p-5 rounded-3xl neu-card space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-md">
+                      {q.subject}
+                    </span>
+                    <button
+                      onClick={() => toggleBookmark(q.id)}
+                      className="text-xs text-red-600 hover:underline font-bold"
+                    >
+                      সরান
+                    </button>
+                  </div>
+                  <h4 
+                    className={`font-bold leading-relaxed text-slate-900 ${textAlign} ${
+                      isPureArabic ? 'font-arabic text-lg' : 'text-sm'
+                    }`}
+                    dir={dir}
                   >
-                    সরান
-                  </button>
+                    {formattedQ}
+                  </h4>
+                  <div className="p-3 neu-inset rounded-2xl text-xs text-slate-800">
+                    <strong className="text-emerald-800">সঠিক উত্তর:</strong> {formatArabicText(q.options[q.correctIndex])} — <span className="text-slate-600">{formatArabicText(q.explanation)}</span>
+                  </div>
                 </div>
-                {q.arabicQuestion && (
-                  <p className="font-arabic text-lg text-emerald-950 font-bold text-right leading-relaxed dir-rtl">
-                    {q.arabicQuestion}
-                  </p>
-                )}
-                <h4 className="font-bold text-sm text-slate-900">{q.question}</h4>
-                <div className="p-3 neu-inset rounded-2xl text-xs text-slate-800">
-                  <strong className="text-emerald-800">সঠিক উত্তর:</strong> {q.options[q.correctIndex]} — <span className="text-slate-600">{q.explanation}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
