@@ -26,6 +26,8 @@ interface AppContextType {
   toggleBookmark: (questionId: string) => void;
   userProfile: UserProfile;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
+  subscribeToPackage: (planId: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly', planName: string, durationMonths: number) => void;
+  isPremiumMember: boolean;
   isNotificationOpen: boolean;
   setIsNotificationOpen: (open: boolean) => void;
   isRoutineOpen: boolean;
@@ -165,6 +167,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে');
   };
 
+  const subscribeToPackage = (planId: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly', planName: string, durationMonths: number) => {
+    const expiryDate = new Date();
+    expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
+    const expiryDateStr = expiryDate.toLocaleDateString('bn-BD', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const updatedProfile: UserProfile = {
+      ...userProfile,
+      isPremium: true,
+      subscriptionPlanId: planId,
+      subscriptionPlanName: planName,
+      subscriptionExpiryDate: expiryDateStr
+    };
+
+    setUserProfile(updatedProfile);
+    localStorage.setItem('tamreen_user_profile', JSON.stringify(updatedProfile));
+    showToast(`অভিনন্দন! আপনার ${planName} সাবস্ক্রিপশন সফলভাবে সক্রিয় হয়েছে।`, 'success');
+  };
+
+  const isPremiumMember = Boolean(userProfile.isPremium || userProfile.subscriptionPlanId);
+
   return (
     <AppContext.Provider
       value={{
@@ -191,6 +217,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleBookmark,
         userProfile,
         updateUserProfile,
+        subscribeToPackage,
+        isPremiumMember,
         isNotificationOpen,
         setIsNotificationOpen,
         isRoutineOpen,

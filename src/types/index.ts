@@ -186,6 +186,21 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export type SubscriptionPlanId = 'monthly' | 'quarterly' | 'half_yearly' | 'yearly';
+
+export interface SubscriptionPlan {
+  id: SubscriptionPlanId;
+  name: string;
+  nameEn: string;
+  durationMonths: number;
+  durationLabel: string;
+  price: number;
+  originalPrice: number;
+  badge?: string;
+  isPopular?: boolean;
+  savings?: string;
+}
+
 export interface UserProfile {
   name: string;
   phone: string;
@@ -204,4 +219,8 @@ export interface UserProfile {
   smsAlerts?: boolean;
   studyStreakDays?: number;
   totalPoints?: number;
+  isPremium?: boolean;
+  subscriptionPlanId?: SubscriptionPlanId;
+  subscriptionPlanName?: string;
+  subscriptionExpiryDate?: string;
 }
