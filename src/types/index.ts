@@ -194,4 +194,14 @@ export interface UserProfile {
   institution: string;
   targetExam: string;
   avatar: string;
+  bio?: string;
+  district?: string;
+  batchTag?: string;
+  joinDate?: string;
+  dailyGoalQuestions?: number;
+  soundEnabled?: boolean;
+  hapticEnabled?: boolean;
+  smsAlerts?: boolean;
+  studyStreakDays?: number;
+  totalPoints?: number;
 }

@@ -80,14 +80,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [toastMessage, setToastMessage] = useState<{ text: string; type: string } | null>(null);
 
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'মুহাম্মদ আব্দুল্লাহ আল-মামুন',
-    phone: '০১৭৭২-৮৯৫৪০১',
-    email: 'abdullah.madrasah@gmail.com',
-    rollNo: 'NTRCA-2026-9814',
-    institution: 'সরকারি মাদ্রাসা-ই-আলিয়া, ঢাকা',
-    targetExam: '১৯তম শিক্ষক নিবন্ধন (প্রভাষক আরবি ও সহকারী মৌলভী)',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('tamreen_user_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse user profile:', e);
+      }
+    }
+    return {
+      name: 'মুহাম্মদ আব্দুল্লাহ আল-মামুন',
+      phone: '০১৭৭২-৮৯৫৪০১',
+      email: 'abdullah.madrasah@gmail.com',
+      rollNo: 'NTRCA-2026-9814',
+      institution: 'সরকারি মাদ্রাসা-ই-আলিয়া, ঢাকা',
+      targetExam: '১৯তম শিক্ষক নিবন্ধন (প্রভাষক আরবি ও সহকারী মৌলভী)',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
+      bio: 'পরিশ্রম ও নিয়মানুবর্তিতার মাধ্যমে ১৯তম শিক্ষক নিবন্ধনে প্রথম সারিতে উত্তীর্ণ হওয়াই মূল লক্ষ্য। ইনশাআল্লাহ!',
+      district: 'ঢাকা',
+      batchTag: 'স্পেশাল গোল্ডেন ব্যাচ ২০২৬',
+      joinDate: 'জানুয়ারি ২০২৬',
+      dailyGoalQuestions: 30,
+      soundEnabled: true,
+      hapticEnabled: true,
+      smsAlerts: true,
+      studyStreakDays: 7,
+      totalPoints: 1450,
+    };
   });
 
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -137,7 +157,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUserProfile = (profileUpdate: Partial<UserProfile>) => {
-    setUserProfile((prev) => ({ ...prev, ...profileUpdate }));
+    setUserProfile((prev) => {
+      const updated = { ...prev, ...profileUpdate };
+      localStorage.setItem('tamreen_user_profile', JSON.stringify(updated));
+      return updated;
+    });
     showToast('প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে');
   };
 
