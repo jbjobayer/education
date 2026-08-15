@@ -27,12 +27,15 @@ import {
   Lock,
   Crown,
   ShieldCheck,
-  Award
+  Award,
+  ArrowLeft,
+  Check,
+  CreditCard,
+  Phone
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useFont } from '../../context/FontContext';
-import { Exam, Question } from '../../types';
-import { SubscriptionModal } from '../modals/SubscriptionModal';
+import { Exam, Question, SubscriptionPlan } from '../../types';
 import { SUBSCRIPTION_PLANS } from '../../data/subscriptionPlans';
 
 interface SubjectItem {
@@ -45,11 +48,20 @@ interface SubjectItem {
 }
 
 export const SubjectWiseView: React.FC = () => {
-  const { startExam, exams, userProfile, isPremiumMember } = useApp();
+  const { startExam, userProfile, isPremiumMember, subscribeToPackage, showToast } = useApp();
   const { formatArabicText } = useFont();
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeSubjectForModal, setActiveSubjectForModal] = useState<SubjectItem | null>(null);
-  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  
+  // Direct in-page states (NO POPUPS)
+  const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
+  const [showDirectSubscriptionView, setShowDirectSubscriptionView] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SUBSCRIPTION_PLANS[1]); // quarterly default
+  const [paymentMethod, setPaymentMethod] = useState<'bkash' | 'nagad' | 'rocket'>('bkash');
+  const [trxId, setTrxId] = useState('');
+  const [senderPhone, setSenderPhone] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Subject practice settings
   const [questionCount, setQuestionCount] = useState<number>(20);
   const [practiceMode, setPracticeMode] = useState<'exam' | 'practice'>('exam');
 
@@ -304,16 +316,29 @@ export const SubjectWiseView: React.FC = () => {
 
   const handleSubjectClick = (sub: SubjectItem) => {
     if (!isPremiumMember) {
-      setIsSubscriptionModalOpen(true);
+      setShowDirectSubscriptionView(true);
       return;
     }
-    setActiveSubjectForModal(sub);
+    setSelectedSubject(sub);
+  };
+
+  const handleDirectPaymentConfirm = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      subscribeToPackage(
+        selectedPlan.id,
+        selectedPlan.name,
+        selectedPlan.durationMonths
+      );
+      setShowDirectSubscriptionView(false);
+    }, 800);
   };
 
   const handleLaunchSubjectTest = () => {
-    if (!activeSubjectForModal) return;
+    if (!selectedSubject) return;
 
-    const sub = activeSubjectForModal;
+    const sub = selectedSubject;
     const generatedQs: Question[] = [];
     
     // Duplicate or prepare questions up to selected count
@@ -334,7 +359,7 @@ export const SubjectWiseView: React.FC = () => {
 
     const customSubjectExam: Exam = {
       id: `exam_${sub.id}_${Date.now()}`,
-      title: `${sub.title} — বিষয়ভিত্তিক বিশেষ প্রস্তুতি টেস্ট`,
+      title: `${sub.title} — বিষয়ভিত্তিক প্রস্তুতি পরীক্ষা`,
       category: 'subject',
       subject: sub.title,
       totalMarks: questionCount,
@@ -346,10 +371,349 @@ export const SubjectWiseView: React.FC = () => {
       questions: generatedQs
     };
 
-    setActiveSubjectForModal(null);
+    setSelectedSubject(null);
     startExam(customSubjectExam);
   };
 
+  // 1. DIRECT IN-PAGE SUBSCRIPTION & PAYMENT VIEW (NO POPUP)
+  if (showDirectSubscriptionView) {
+    return (
+      <div className="space-y-4 sm:space-y-5 animate-fadeIn max-w-4xl mx-auto pb-24">
+        {/* Top Back Navigation Bar */}
+        <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 shadow-sm border border-slate-100 dark:border-slate-800">
+          <button
+            onClick={() => setShowDirectSubscriptionView(false)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>বিষয়ভিত্তিক তালিকায় ফিরে যান</span>
+          </button>
+
+          <span className="text-xs font-black text-[#005a36] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+            প্রিমিয়াম মেম্বারশিপ প্যাকেজসমূহ
+          </span>
+        </div>
+
+        {/* Subscription Plan Selection Cards */}
+        <div className="p-5 sm:p-7 rounded-3xl neu-card border-2 border-emerald-600/30 dark:border-emerald-500/30 bg-white dark:bg-slate-900 shadow-md space-y-6">
+          <div className="text-center max-w-xl mx-auto">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black mb-2 shadow-xs border border-amber-300">
+              <Crown className="w-3.5 h-3.5 fill-slate-950" />
+              আনলক করুন বিষয়ভিত্তিক সকল সুবিধা
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-[#005a36] dark:text-emerald-400">
+              আপনার পছন্দের মেম্বারশিপ প্যাকেজ নির্বাচন করুন
+            </h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 font-medium">
+              প্যাকেজ ক্রয় করার সাথে সাথে ১৫টি বিষয়ের ৫,০০০+ প্রশ্নব্যাংক, ওএমআর টেস্ট ও লিডারবোর্ড আনলক হয়ে যাবে
+            </p>
+          </div>
+
+          {/* 4 Packages Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {SUBSCRIPTION_PLANS.map((plan) => {
+              const isSelected = selectedPlan.id === plan.id;
+
+              return (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlan(plan)}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between select-none ${
+                    isSelected
+                      ? 'border-[#005a36] dark:border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-md scale-[1.02]'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-emerald-500/50'
+                  }`}
+                >
+                  {plan.badge && (
+                    <span className="absolute -top-2.5 right-3 bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full border border-amber-300 shadow-xs">
+                      {plan.badge}
+                    </span>
+                  )}
+
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">
+                      {plan.durationLabel}
+                    </span>
+                    <h4 className="font-extrabold text-sm sm:text-base text-[#005a36] dark:text-emerald-400 mt-0.5">
+                      {plan.name}
+                    </h4>
+
+                    <div className="mt-3 flex items-baseline gap-1.5">
+                      <span className="text-xl sm:text-2xl font-black text-[#005a36] dark:text-emerald-400">
+                        ৳{plan.price}
+                      </span>
+                      {plan.originalPrice && (
+                        <span className="text-xs line-through text-slate-400 font-semibold">
+                          ৳{plan.originalPrice}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 font-medium">
+                      {plan.nameEn}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                      {plan.savings || 'তাত্ক্ষণিক এক্সেস'}
+                    </span>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                      isSelected
+                        ? 'bg-[#005a36] border-[#005a36] text-white'
+                        : 'border-slate-300 dark:border-slate-700'
+                    }`}>
+                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Payment Details Form directly on page */}
+          <div className="p-4 sm:p-5 rounded-2xl neu-inset border border-emerald-600/20 dark:border-emerald-500/20 space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+              <CreditCard className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs sm:text-sm font-black text-[#005a36] dark:text-emerald-300">
+                পেমেন্ট পদ্ধতি ও সরাসরি এক্টিভেশন
+              </span>
+            </div>
+
+            {/* Gateway Buttons */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('bkash')}
+                className={`py-2.5 px-3 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'bkash'
+                    ? 'bg-[#e2136e] text-white border-[#e2136e] shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <span>বিকাশ (bKash)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('nagad')}
+                className={`py-2.5 px-3 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'nagad'
+                    ? 'bg-[#f7941d] text-white border-[#f7941d] shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <span>নগদ (Nagad)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('rocket')}
+                className={`py-2.5 px-3 rounded-xl border text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  paymentMethod === 'rocket'
+                    ? 'bg-[#8c3494] text-white border-[#8c3494] shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <span>রকেট (Rocket)</span>
+              </button>
+            </div>
+
+            {/* Instruction text */}
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+              <p className="font-bold text-[#005a36] dark:text-emerald-400">
+                মার্চেন্ট / পার্সোনাল নম্বর: <span className="font-mono text-sm font-black text-amber-600 dark:text-amber-400 select-all">০১৭১১-২২৩৩৪৪</span> (Send Money / Payment)
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                নির্বাচিত প্যাকেজ: <strong>{selectedPlan.name} (৳{selectedPlan.price})</strong> — টাকা পাঠিয়ে নিচের বাটনে ক্লিক করুন।
+              </p>
+            </div>
+
+            {/* Instant Activate CTA Button */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDirectSubscriptionView(false)}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl neu-btn text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+              >
+                বাতিল করুন
+              </button>
+
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={handleDirectPaymentConfirm}
+                className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-[#005a36] hover:bg-[#004227] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer border border-amber-400/50"
+              >
+                {isProcessing ? (
+                  <span>প্যাকেজ সক্রিয় হচ্ছে...</span>
+                ) : (
+                  <>
+                    <Crown className="w-4 h-4 text-amber-300 fill-amber-300" />
+                    <span>৳{selectedPlan.price} পরিশোধ করে সরাসরি আনলক করুন</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. DIRECT IN-PAGE SUBJECT PRACTICE & TEST LAUNCHER VIEW (NO POPUP)
+  if (selectedSubject) {
+    const sub = selectedSubject;
+    const Icon = sub.icon;
+
+    return (
+      <div className="space-y-4 sm:space-y-5 animate-fadeIn max-w-4xl mx-auto pb-24">
+        {/* Top Back Navigation Bar */}
+        <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 shadow-sm border border-slate-100 dark:border-slate-800">
+          <button
+            onClick={() => setSelectedSubject(null)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>সকল বিষয়ের তালিকায় ফিরে যান</span>
+          </button>
+
+          <span className="text-xs font-black text-[#005a36] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+            {sub.title}
+          </span>
+        </div>
+
+        {/* Main Subject Practice Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-7 neu-card border border-emerald-600/20 dark:border-emerald-500/20 shadow-md space-y-6">
+          {/* Subject Header */}
+          <div className="flex items-center gap-3.5 border-b border-slate-200/70 dark:border-slate-800 pb-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#005a36] text-amber-400 flex items-center justify-center shrink-0 border border-emerald-400/30 shadow-sm">
+              <Icon className="w-7 h-7 stroke-[2.2]" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-2xs inline-flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5" />
+                {sub.totalQuestions}+ প্রশ্ন ব্যাংক সম্পূর্ণ আনলকড
+              </span>
+              <h2 className="text-lg sm:text-2xl font-black text-[#005a36] dark:text-emerald-400 mt-1">
+                {sub.title} — প্রস্তুতি টেস্ট
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
+                {sub.subtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Test Configuration Controls directly on page */}
+          <div className="space-y-4">
+            {/* Question Count Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-black text-[#005a36] dark:text-emerald-300 block">
+                প্রশ্নের সংখ্যা নির্বাচন করুন:
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[10, 20, 30, 50].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setQuestionCount(count)}
+                    className={`py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      questionCount === count
+                        ? 'bg-[#005a36] text-[#fbbf24] border-emerald-500 shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-500/50'
+                    }`}
+                  >
+                    {count}টি প্রশ্ন
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Practice Mode Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-black text-[#005a36] dark:text-emerald-300 block">
+                পরীক্ষার ধরন / মোড:
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setPracticeMode('exam')}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    practiceMode === 'exam'
+                      ? 'border-[#005a36] dark:border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-black text-xs text-[#005a36] dark:text-emerald-300">
+                    <Timer className="w-3.5 h-3.5 text-amber-500" />
+                    <span>রিয়েল এক্সাম মোড</span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                    টাইমার ও ০.২৫ নেগেটিভ মার্কিং সহ ওএমআর মূল্যায়ন
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPracticeMode('practice')}
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                    practiceMode === 'practice'
+                      ? 'border-[#005a36] dark:border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-black text-xs text-[#005a36] dark:text-emerald-300">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>সেলফ স্টাডি মোড</span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                    নেগেটিভ মার্কিং ছাড়া পর্যাপ্ত সময় নিয়ে অনুশীলনের সুযোগ
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Sample Questions Preview */}
+            <div className="p-4 rounded-2xl neu-inset border border-slate-200 dark:border-slate-800 space-y-2">
+              <span className="text-[11px] font-black text-slate-600 dark:text-slate-400 block">
+                নমুনা প্রশ্নসমূহ (Sample Preview):
+              </span>
+              {sub.sampleQuestions.slice(0, 2).map((item, i) => (
+                <div key={i} className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/60 text-xs border border-slate-200/60 dark:border-slate-800">
+                  <p className="font-bold text-[#005a36] dark:text-emerald-300">{item.q}</p>
+                  {item.arabic && (
+                    <p className="font-arabic text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5 text-right" dir="rtl">
+                      {formatArabicText(item.arabic)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Button: Start Practice Directly */}
+          <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <button
+              onClick={() => setSelectedSubject(null)}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl neu-btn text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+            >
+              তালিকায় ফিরে যান
+            </button>
+
+            <button
+              onClick={handleLaunchSubjectTest}
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#005a36] hover:bg-[#004227] text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer border border-amber-400/60"
+            >
+              <Play className="w-4 h-4 fill-amber-300 text-amber-300" />
+              <span>{questionCount}টি প্রশ্নের টেস্ট শুরু করুন</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. MAIN SUBJECTS DIRECT VIEW
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn max-w-4xl mx-auto pb-10">
       {/* 1. Hero Neumorphic Card with Green Typography & Premium Status */}
@@ -408,7 +772,7 @@ export const SubjectWiseView: React.FC = () => {
               )}
             </div>
             <button
-              onClick={() => setIsSubscriptionModalOpen(true)}
+              onClick={() => setShowDirectSubscriptionView(true)}
               className="px-3.5 py-1.5 rounded-xl neu-btn text-[11px] font-bold text-[#005a36] dark:text-emerald-300 border border-emerald-600/20 hover:border-amber-400 transition-all cursor-pointer flex items-center gap-1"
             >
               <Crown className="w-3 h-3 text-amber-500" />
@@ -417,35 +781,47 @@ export const SubjectWiseView: React.FC = () => {
           </div>
         ) : (
           <div className="pt-3 border-t border-emerald-600/15 dark:border-emerald-500/20 space-y-3">
-            {/* Quick 4 Package Badges */}
+            {/* Quick 4 Package Badges with Green/Yellow Boundary */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div 
-                onClick={() => setIsSubscriptionModalOpen(true)}
-                className="p-2 sm:p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-600/20 hover:border-emerald-600 cursor-pointer transition-all text-center"
+                onClick={() => {
+                  setSelectedPlan(SUBSCRIPTION_PLANS[0]);
+                  setShowDirectSubscriptionView(true);
+                }}
+                className="p-2 sm:p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-600/30 hover:border-amber-400 cursor-pointer transition-all text-center"
               >
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold">মাসিক</span>
                 <span className="text-xs sm:text-sm font-black text-[#005a36] dark:text-emerald-400">৳১৯৯</span>
               </div>
               <div 
-                onClick={() => setIsSubscriptionModalOpen(true)}
+                onClick={() => {
+                  setSelectedPlan(SUBSCRIPTION_PLANS[1]);
+                  setShowDirectSubscriptionView(true);
+                }}
                 className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-500 hover:border-amber-400 cursor-pointer transition-all text-center relative"
               >
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-full">
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-full border border-amber-300">
                   জনপ্রিয় 🔥
                 </span>
                 <span className="text-[10px] text-emerald-900 dark:text-emerald-300 block font-bold">ত্রৈমাসিক (৩ মাস)</span>
                 <span className="text-xs sm:text-sm font-black text-[#005a36] dark:text-emerald-400">৳৪৯৯</span>
               </div>
               <div 
-                onClick={() => setIsSubscriptionModalOpen(true)}
-                className="p-2 sm:p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-600/20 hover:border-emerald-600 cursor-pointer transition-all text-center"
+                onClick={() => {
+                  setSelectedPlan(SUBSCRIPTION_PLANS[2]);
+                  setShowDirectSubscriptionView(true);
+                }}
+                className="p-2 sm:p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-600/30 hover:border-amber-400 cursor-pointer transition-all text-center"
               >
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold">ষান্মাসিক (৬ মাস)</span>
                 <span className="text-xs sm:text-sm font-black text-[#005a36] dark:text-emerald-400">৳৮৯৯</span>
               </div>
               <div 
-                onClick={() => setIsSubscriptionModalOpen(true)}
-                className="p-2 sm:p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-400/50 hover:border-amber-400 cursor-pointer transition-all text-center"
+                onClick={() => {
+                  setSelectedPlan(SUBSCRIPTION_PLANS[3]);
+                  setShowDirectSubscriptionView(true);
+                }}
+                className="p-2 sm:p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-400/60 hover:border-amber-500 cursor-pointer transition-all text-center"
               >
                 <span className="text-[10px] text-amber-800 dark:text-amber-300 block font-bold">বাৎসরিক (১ বছর)</span>
                 <span className="text-xs sm:text-sm font-black text-[#005a36] dark:text-emerald-400">৳১৪৯৯ 👑</span>
@@ -454,7 +830,7 @@ export const SubjectWiseView: React.FC = () => {
 
             {/* Unlock CTA Button */}
             <button
-              onClick={() => setIsSubscriptionModalOpen(true)}
+              onClick={() => setShowDirectSubscriptionView(true)}
               className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-2xl neu-btn-primary text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all cursor-pointer border border-amber-400/50"
             >
               <Crown className="w-4 h-4 fill-amber-300 text-amber-300" />
@@ -476,7 +852,7 @@ export const SubjectWiseView: React.FC = () => {
         />
       </div>
 
-      {/* 3. Subject List Cards */}
+      {/* 3. Subject List Cards with Green/Yellow Accents */}
       <div className="space-y-3">
         {filteredSubjects.map((sub) => {
           const Icon = sub.icon;
@@ -536,7 +912,7 @@ export const SubjectWiseView: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveSubjectForModal(sub);
+                    setSelectedSubject(sub);
                   }}
                   className="px-3.5 sm:px-4 py-2 rounded-xl neu-btn text-xs font-bold text-[#005a36] dark:text-emerald-300 border border-emerald-600/35 hover:border-amber-400 dark:border-emerald-500/40 dark:hover:border-amber-400/80 group-hover:bg-[#005a36] group-hover:text-white dark:group-hover:bg-emerald-600 dark:group-hover:text-white transition-all shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
                 >
@@ -547,7 +923,7 @@ export const SubjectWiseView: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsSubscriptionModalOpen(true);
+                    setShowDirectSubscriptionView(true);
                   }}
                   className="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl neu-btn text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-400/60 hover:border-amber-500 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 whitespace-nowrap"
                 >
@@ -559,157 +935,6 @@ export const SubjectWiseView: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Subscription Modal */}
-      <SubscriptionModal
-        isOpen={isSubscriptionModalOpen}
-        onClose={() => setIsSubscriptionModalOpen(false)}
-      />
-
-      {/* Subject Test Setup Modal */}
-      {activeSubjectForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div 
-            className="fixed inset-0" 
-            onClick={() => setActiveSubjectForModal(null)} 
-            aria-hidden="true"
-          />
-
-          <div className="relative w-full max-w-md bg-[#e9edf5] dark:bg-[#101927] rounded-3xl neu-card border border-emerald-600/30 dark:border-emerald-500/30 shadow-2xl flex flex-col overflow-hidden z-10">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-[#005a36] text-white flex items-center justify-between border-b border-amber-400/30">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                  <BookOpen className="w-5 h-5 text-amber-300" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-xs inline-flex items-center gap-1">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    {activeSubjectForModal.totalQuestions}+ প্রশ্ন ব্যাংক
-                  </span>
-                  <h3 className="font-extrabold text-sm sm:text-base text-white mt-0.5">
-                    {activeSubjectForModal.title}
-                  </h3>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveSubjectForModal(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 sm:p-5 space-y-4">
-              <p className="text-xs text-emerald-950 dark:text-emerald-200 font-medium">
-                {activeSubjectForModal.subtitle}
-              </p>
-
-              {/* Choose Question Count */}
-              <div>
-                <label className="text-xs font-black text-[#005a36] dark:text-emerald-400 flex items-center gap-1.5 mb-2">
-                  <Sliders className="w-3.5 h-3.5 text-emerald-600" />
-                  প্রশ্ন সংখ্যা নির্বাচন করুন:
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[10, 20, 50].map((count) => (
-                    <button
-                      key={count}
-                      onClick={() => setQuestionCount(count)}
-                      className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                        questionCount === count
-                          ? 'bg-[#005a36] text-white shadow-sm border-emerald-400 ring-1 ring-emerald-400'
-                          : 'neu-btn text-[#005a36] dark:text-emerald-300 border-emerald-600/20 dark:border-emerald-500/20 hover:border-amber-400'
-                      }`}
-                    >
-                      {count}টি প্রশ্ন
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mode Selection */}
-              <div>
-                <label className="text-xs font-black text-[#005a36] dark:text-emerald-400 flex items-center gap-1.5 mb-2">
-                  <Timer className="w-3.5 h-3.5 text-amber-500" />
-                  অনুশীলন মোড:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setPracticeMode('exam')}
-                    className={`p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                      practiceMode === 'exam'
-                        ? 'border-2 border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 shadow-xs'
-                        : 'neu-btn text-slate-700 dark:text-slate-300 border border-emerald-600/20 dark:border-emerald-500/20 hover:border-amber-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1 font-black text-xs text-[#005a36] dark:text-emerald-300">
-                      <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      <span>রিয়েল এক্সাম মোড</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">টাইমার ও নেগেটিভ মার্কিং সহ</p>
-                  </button>
-
-                  <button
-                    onClick={() => setPracticeMode('practice')}
-                    className={`p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                      practiceMode === 'practice'
-                        ? 'border-2 border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 shadow-xs'
-                        : 'neu-btn text-slate-700 dark:text-slate-300 border border-emerald-600/20 dark:border-emerald-500/20 hover:border-amber-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1 font-black text-xs text-[#005a36] dark:text-emerald-300">
-                      <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>সেলফ স্টাডি মোড</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">তাৎক্ষণিক উত্তর ও ব্যাখ্যা</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Sample Question Preview */}
-              {activeSubjectForModal.sampleQuestions.length > 0 && (
-                <div className="p-3 rounded-2xl neu-inset border border-emerald-600/15 dark:border-emerald-500/15">
-                  <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 block mb-1">
-                    নমুনা প্রশ্ন প্রিভিউ:
-                  </span>
-                  {activeSubjectForModal.sampleQuestions[0].arabic && (
-                    <p 
-                      className="text-right text-xs text-[#005a36] dark:text-emerald-300 font-arabic font-bold mb-1"
-                      dir="rtl"
-                    >
-                      {formatArabicText(activeSubjectForModal.sampleQuestions[0].arabic)}
-                    </p>
-                  )}
-                  <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100 leading-snug">
-                    {activeSubjectForModal.sampleQuestions[0].q}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 sm:p-4 bg-[#e4e9f2] dark:bg-[#0b121d] border-t border-white/60 dark:border-slate-800 flex items-center justify-between gap-2">
-              <button
-                onClick={() => setActiveSubjectForModal(null)}
-                className="px-4 py-2 rounded-xl neu-btn text-xs font-bold text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 hover:border-amber-400 cursor-pointer"
-              >
-                বাতিল
-              </button>
-
-              <button
-                onClick={handleLaunchSubjectTest}
-                className="px-6 py-2 rounded-xl neu-btn-primary text-xs font-black flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer border border-amber-400/40"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>টেস্ট শুরু করুন ({questionCount}টি প্রশ্ন)</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

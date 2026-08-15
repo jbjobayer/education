@@ -20,17 +20,15 @@ import {
   Trophy
 } from 'lucide-react';
 import { mockExams } from '../../data/mockData';
-import { Exam, LeaderboardEntry } from '../../types';
-import { generateExamLeaderboard } from '../../utils/leaderboardUtils';
+import { Exam } from '../../types';
 
 export const ExamsView: React.FC = () => {
-  const { startExam, examResults, setViewingResult, setResultSubTab, userProfile } = useApp();
+  const { startExam, examResults, setViewingResult, setResultSubTab } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'free'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'participants' | 'marks'>('latest');
   const [shareToast, setShareToast] = useState<string | null>(null);
-  const [previewLeaderboardExam, setPreviewLeaderboardExam] = useState<Exam | null>(null);
 
   // Subject list extracted from exams
   const subjects = useMemo(() => {
@@ -354,24 +352,13 @@ export const ExamsView: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => startExam(exam)}
-                        className="col-span-2 py-3 rounded-2xl bg-[#004d2e] hover:bg-[#003822] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.99]"
-                      >
-                        <Play className="w-4 h-4 fill-white" />
-                        <span>ফ্রি পরীক্ষা দিন</span>
-                      </button>
-
-                      <button
-                        onClick={() => setPreviewLeaderboardExam(exam)}
-                        className="py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-98"
-                        title="এই পরীক্ষার মেধা তালিকা দেখুন"
-                      >
-                        <Trophy className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-                        <span>মেধাতালিকা</span>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => startExam(exam)}
+                      className="w-full py-3 rounded-2xl bg-[#004d2e] hover:bg-[#003822] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>পরীক্ষা দিন</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -379,132 +366,6 @@ export const ExamsView: React.FC = () => {
           })
         )}
       </div>
-
-      {/* Exam Specific Leaderboard Preview Modal */}
-      {previewLeaderboardExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-800 max-h-[88vh] flex flex-col space-y-4 animate-scaleUp">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center">
-                  <Trophy className="w-4 h-4 fill-amber-400" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100">
-                    মেধা তালিকা ({previewLeaderboardExam.title})
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    বিষয়: {previewLeaderboardExam.subject} • মোট প্রশ্ন: {previewLeaderboardExam.totalQuestions}টি • পূর্ণমান: {previewLeaderboardExam.totalMarks}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setPreviewLeaderboardExam(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Leaderboard List */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-              {generateExamLeaderboard(
-                previewLeaderboardExam, 
-                examResults.find(r => r.examId === previewLeaderboardExam.id),
-                userProfile
-              ).map((entry) => {
-                const isRank1 = entry.rank === 1;
-                const isRank2 = entry.rank === 2;
-                const isRank3 = entry.rank === 3;
-                const isUser = entry.isCurrentUser;
-
-                return (
-                  <div
-                    key={entry.id}
-                    className={`rounded-2xl p-3 flex items-center justify-between gap-3 border transition-all ${
-                      isRank1
-                        ? 'border-amber-400 bg-amber-50/40 dark:bg-amber-950/30'
-                        : isRank2
-                        ? 'border-sky-400 bg-sky-50/40 dark:bg-sky-950/30'
-                        : isRank3
-                        ? 'border-amber-700/60 bg-amber-900/10'
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40'
-                    } ${isUser ? 'ring-2 ring-emerald-500' : ''}`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="w-6 h-6 rounded-full bg-slate-800 text-white font-black text-xs flex items-center justify-center shrink-0">
-                        {entry.rank.toLocaleString('bn-BD')}
-                      </div>
-
-                      <div className="w-8 h-8 rounded-full border border-emerald-500/60 p-0.5 shrink-0 bg-white dark:bg-slate-900 flex items-center justify-center">
-                        {entry.avatar ? (
-                          <img src={entry.avatar} alt={entry.name} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <span className="text-xs font-bold text-emerald-800">{entry.name.slice(0, 1)}</span>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <strong className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                            {entry.name}
-                          </strong>
-                          {isRank1 && <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 rounded-full">১ম</span>}
-                          {isRank2 && <span className="text-[9px] bg-sky-400 text-white font-black px-1.5 rounded-full">২য়</span>}
-                          {isRank3 && <span className="text-[9px] bg-amber-700 text-white font-black px-1.5 rounded-full">৩য়</span>}
-                          {isUser && <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 rounded-full">আপনি</span>}
-                        </div>
-                        <span className="text-[10px] text-slate-500 truncate block">{entry.institution || 'সরকারি মাদ্রাসা-ই-আলিয়া'}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 text-center text-xs">
-                      <div>
-                        <span className="text-[9px] text-slate-400 block">সঠিক</span>
-                        <span className="font-bold text-emerald-600 block">{entry.correctAnswers}টি</span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-slate-400 block">ভুল</span>
-                        <span className="font-bold text-rose-600 block">{entry.wrongAnswers}টি</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[9px] text-slate-400 block">নম্বর</span>
-                        <span className="font-black text-amber-600 block">
-                          {entry.score % 1 === 0 ? entry.score.toFixed(0) : entry.score.toFixed(2)}/{entry.totalMarks}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Footer */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-              <button
-                onClick={() => setPreviewLeaderboardExam(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
-              >
-                বন্ধ করুন
-              </button>
-
-              <button
-                onClick={() => {
-                  const examToStart = previewLeaderboardExam;
-                  setPreviewLeaderboardExam(null);
-                  startExam(examToStart);
-                }}
-                className="px-5 py-2 rounded-xl bg-[#004d2e] hover:bg-[#003822] text-white text-xs font-black shadow-md flex items-center gap-1.5"
-              >
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span>পরীক্ষা শুরু করুন</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

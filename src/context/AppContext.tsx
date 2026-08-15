@@ -65,15 +65,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [viewingResult, setViewingResult] = useState<ExamResult | null>(null);
   const [resultSubTab, setResultSubTab] = useState<'explanation' | 'leaderboard'>('explanation');
 
-  const handleSetActiveTab = (tab: MainTab) => {
-    setViewingResult(null);
-    setActiveTab(tab);
-  };
-
   const [selectedCourseDetails, setSelectedCourseDetails] = useState<Course | null>(null);
   const [checkoutCourse, setCheckoutCourse] = useState<Course | null>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isRoutineOpen, setIsRoutineOpen] = useState(false);
+
+  const handleSetActiveTab = (tab: MainTab) => {
+    setViewingResult(null);
+    setSelectedCourseDetails(null);
+    setCheckoutCourse(null);
+    setIsNotificationOpen(false);
+    setIsRoutineOpen(false);
+    setActiveTab(tab);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState<string[]>(() => {
     const saved = localStorage.getItem('tamreen_bookmarks');

@@ -9,12 +9,15 @@ import {
   ChevronRight, 
   Bookmark, 
   CheckCircle2, 
-  Download, 
   Clock, 
   Sparkles,
   Flame,
   FileText,
-  X
+  ArrowLeft,
+  Share2,
+  Check,
+  Award,
+  AlertCircle
 } from 'lucide-react';
 import { JobCircular } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -25,6 +28,7 @@ export const CircularsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(['1']);
   const [selectedCircular, setSelectedCircular] = useState<JobCircular | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const circulars: JobCircular[] = [
     {
@@ -99,112 +103,237 @@ export const CircularsView: React.FC = () => {
       tag: 'কারিগরি ও মাদ্রাসা',
       vacancies: '১,২০০+ জন',
       deadline: '২০ সেপ্টেম্বর, ২০২৬',
-      publishDate: '২৮ জুলাই, ২০২৬',
+      publishDate: '০৩ আগস্ট, ২০২৬',
       isHot: false,
-      salaryScale: 'গ্রেড ১০ থেকে ১৬',
-      educationalReq: 'ফাজিল/স্নাতক/এইচএসসি (আলিম) সমমান',
+      salaryScale: 'গ্রেড ১০, ১১ ও ১২',
+      educationalReq: 'ফাজিল/স্নাতক সমমান ডিগ্রি',
       ageLimit: '১৮ থেকে ৩২ বছর',
       applyLink: 'http://tmed.teletalk.com.bd',
-      description: 'কারিগরি ও মাদ্রাসা শিক্ষা বিভাগের বিভিন্ন শূন্য পদে কম্পিউটার অপারেটর, ল্যাব সহকারী, হিসাবরক্ষক ও অফিস সহকারী নিয়োগ।'
+      description: 'কারিগরি ও মাদ্রাসা শিক্ষা বিভাগের অধীনস্থ বিভিন্ন প্রকল্প ও শিক্ষা প্রতিষ্ঠানে অস্থায়ী ভিত্তিতে বিভিন্ন ক্যাটাগরিতে শিক্ষক ও কর্মকর্তা নিয়োগ।'
     }
   ];
 
-  const filteredCirculars = circulars.filter(item => {
-    const matchesFilter = selectedFilter === 'all' || item.category === selectedFilter;
-    const matchesSearch = 
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.tag.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+  const filteredCirculars = circulars.filter((item) => {
+    if (selectedFilter !== 'all' && item.category !== selectedFilter) {
+      return false;
+    }
+    if (searchTerm.trim() !== '') {
+      const q = searchTerm.toLowerCase();
+      return (
+        item.title.toLowerCase().includes(q) ||
+        item.organization.toLowerCase().includes(q) ||
+        item.tag.toLowerCase().includes(q)
+      );
+    }
+    return true;
   });
 
-  const toggleBookmark = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (bookmarkedIds.includes(id)) {
-      setBookmarkedIds(bookmarkedIds.filter(bId => bId !== id));
+  const toggleBookmark = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setBookmarkedIds((prev) => 
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleShare = (circular: JobCircular) => {
+    if (navigator.share) {
+      navigator.share({
+        title: circular.title,
+        text: `${circular.title}\nপ্রতিষ্ঠান: ${circular.organization}\nপদসংখ্যা: ${circular.vacancies}\nশেষ তারিখ: ${circular.deadline}`,
+        url: window.location.href,
+      }).catch(() => {});
     } else {
-      setBookmarkedIds([...bookmarkedIds, id]);
+      navigator.clipboard?.writeText(`${circular.title} - ${circular.organization}`);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
+  // DIRECT INLINE DETAILS VIEW (No popups)
+  if (selectedCircular) {
+    const isSaved = bookmarkedIds.includes(selectedCircular.id);
+
+    return (
+      <div className="space-y-4 sm:space-y-5 pb-24 animate-fadeIn max-w-4xl mx-auto">
+        {/* Top Back Navigation Bar */}
+        <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 shadow-sm border border-slate-100 dark:border-slate-800">
+          <button
+            onClick={() => setSelectedCircular(null)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>সকল সার্কুলারে ফিরে যান</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => toggleBookmark(selectedCircular.id)}
+              className="p-2 rounded-xl neu-btn text-slate-600 dark:text-slate-300 hover:text-amber-500 transition-colors cursor-pointer"
+              title={isSaved ? "বুকমার্ক মুছে ফেলুন" : "বুকমার্ক করুন"}
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? 'text-amber-500 fill-amber-500' : ''}`} />
+            </button>
+            <button
+              onClick={() => handleShare(selectedCircular)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-[#005a36] dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-all active:scale-95 cursor-pointer"
+            >
+              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              <span>{copiedLink ? 'কপি হয়েছে' : 'শেয়ার'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Circular Details Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 neu-card border border-emerald-600/20 dark:border-emerald-500/20 shadow-md space-y-5">
+          {/* Header Area */}
+          <div className="border-b border-slate-200/70 dark:border-slate-800 pb-4">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="px-2.5 py-1 rounded-md text-xs font-extrabold bg-[#005a36] text-white">
+                {selectedCircular.tag}
+              </span>
+              {selectedCircular.isHot && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-black bg-amber-400 text-slate-950 border border-amber-300 flex items-center gap-1">
+                  <Flame className="w-3.5 h-3.5 fill-slate-950" />
+                  <span>হট নিয়োগ বিজ্ঞপ্তি</span>
+                </span>
+              )}
+            </div>
+
+            <h2 className="text-lg sm:text-2xl font-black text-[#004d2e] dark:text-emerald-400 leading-snug">
+              {selectedCircular.title}
+            </h2>
+
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 flex items-center gap-1.5 font-bold">
+              <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{selectedCircular.organization}</span>
+            </p>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 sm:p-3.5 rounded-2xl neu-inset">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">মোট পদসংখ্যা</span>
+              <strong className="text-sm sm:text-base text-[#005a36] dark:text-emerald-400 font-extrabold block mt-0.5">
+                {selectedCircular.vacancies}
+              </strong>
+            </div>
+
+            <div className="p-3 sm:p-3.5 rounded-2xl neu-inset border border-red-500/20">
+              <span className="text-[11px] text-red-600 dark:text-red-400 block font-semibold">আবেদনের শেষ সময়</span>
+              <strong className="text-sm sm:text-base text-red-600 dark:text-red-400 font-extrabold block mt-0.5">
+                {selectedCircular.deadline}
+              </strong>
+            </div>
+
+            {selectedCircular.salaryScale && (
+              <div className="p-3 sm:p-3.5 rounded-2xl neu-inset">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">বেতন স্কেল</span>
+                <strong className="text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-bold block mt-0.5">
+                  {selectedCircular.salaryScale}
+                </strong>
+              </div>
+            )}
+
+            {selectedCircular.ageLimit && (
+              <div className="p-3 sm:p-3.5 rounded-2xl neu-inset">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-semibold">বয়সসীমা</span>
+                <strong className="text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-bold block mt-0.5">
+                  {selectedCircular.ageLimit}
+                </strong>
+              </div>
+            )}
+          </div>
+
+          {/* Educational Requirements */}
+          {selectedCircular.educationalReq && (
+            <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-600/20 dark:border-emerald-500/20 space-y-1">
+              <span className="text-xs sm:text-sm font-black text-[#005a36] dark:text-emerald-300 block flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-emerald-600" />
+                শিক্ষাগত যোগ্যতা ও শর্তাবলি
+              </span>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium pt-1">
+                {selectedCircular.educationalReq}
+              </p>
+            </div>
+          )}
+
+          {/* Full Description */}
+          {selectedCircular.description && (
+            <div className="p-4 rounded-2xl neu-card space-y-1">
+              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 block mb-1">
+                সার্কুলার বিস্তারিত বিবরণ
+              </span>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                {selectedCircular.description}
+              </p>
+            </div>
+          )}
+
+          {/* Direct Actions Plate */}
+          <div className="pt-3 border-t border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <button
+              onClick={() => setActiveTab('exams')}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl neu-btn text-xs sm:text-sm font-bold text-[#005a36] dark:text-emerald-400 flex items-center justify-center gap-2 cursor-pointer border border-emerald-600/30 hover:border-emerald-600 active:scale-95 transition-all"
+            >
+              <FileText className="w-4 h-4" />
+              <span>এই সার্কুলারের মডেল টেস্ট দিন</span>
+            </button>
+
+            {selectedCircular.applyLink && (
+              <a
+                href={selectedCircular.applyLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#005a36] hover:bg-[#004227] text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all border border-emerald-400/40"
+              >
+                <span>অফিসিয়াল সাইটে আবেদন করুন</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4 sm:space-y-5 animate-fadeIn max-w-4xl mx-auto pb-10">
-      {/* 1. Hero Dark Banner matching Screenshot 1 */}
-      <div className="bg-[#121c30] dark:bg-[#0b1424] text-white rounded-3xl p-5 sm:p-7 shadow-[0_10px_30px_rgba(15,23,42,0.25)] border border-slate-700/50 relative overflow-hidden">
-        {/* Decorative ambient glow */}
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-amber-300 text-xs font-bold mb-3.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>শিক্ষক নিয়োগ ও সরকারি চাকরি আপডেট ২০২৬</span>
-        </div>
-
-        {/* Title */}
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-tight mb-2">
-          শিক্ষক নিয়োগ জব পোর্টাল ও সার্কুলার
-        </h2>
-
-        {/* Subtitle */}
-        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl font-normal mb-5">
-          বেসরকারি শিক্ষক নিবন্ধন (NTRCA), মাদ্রাসা শিক্ষা অধিদপ্তর, প্রাথমিক সহকারী শিক্ষক ও সরকারি হাইস্কুল নিয়োগের সঠিক তথ্য ও আপডেট।
-        </p>
-
-        {/* 3 Stats Boxes inside Hero */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
-          <div className="bg-[#1a2640]/80 rounded-2xl p-3 sm:p-4 text-center border border-slate-700/60">
-            <h3 className="text-base sm:text-xl font-black text-amber-400 leading-tight">
-              ৩৫,০০০+
+    <div className="space-y-4 sm:space-y-5 pb-24 animate-fadeIn">
+      {/* 1. Header Banner */}
+      <div className="p-4 sm:p-5 rounded-3xl neu-card border border-emerald-600/30 dark:border-emerald-500/30 relative overflow-hidden bg-gradient-to-br from-emerald-500/10 via-transparent to-amber-500/10">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="text-[10px] font-black bg-[#005a36] text-amber-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 shadow-xs border border-emerald-400/30">
+              <Briefcase className="w-3 h-3 text-amber-300" />
+              জব সার্কুলার বুলেটিন
+            </span>
+            <h3 className="font-extrabold text-base sm:text-lg text-[#005a36] dark:text-emerald-400 mt-1.5">
+              মাদ্রাসা ও শিক্ষা নিয়োগ বিজ্ঞপ্তি ২০২৬
             </h3>
-            <p className="text-[10px] sm:text-xs text-slate-300 mt-1 font-medium">NTRCA পদসংখ্যা</p>
-          </div>
-
-          <div className="bg-[#1a2640]/80 rounded-2xl p-3 sm:p-4 text-center border border-slate-700/60">
-            <h3 className="text-base sm:text-xl font-black text-emerald-400 leading-tight">
-              ৪,৫২০+
-            </h3>
-            <p className="text-[10px] sm:text-xs text-slate-300 mt-1 font-medium">মাদ্রাসা শিক্ষক</p>
-          </div>
-
-          <div className="bg-[#1a2640]/80 rounded-2xl p-3 sm:p-4 text-center border border-slate-700/60">
-            <h3 className="text-base sm:text-xl font-black text-sky-400 leading-tight">
-              ১৩,৭৭০+
-            </h3>
-            <p className="text-[10px] sm:text-xs text-slate-300 mt-1 font-medium">প্রাথমিক শিক্ষক</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              ১৯তম শিক্ষক নিবন্ধন (NTRCA), মাদ্রাসা অধিদপ্তর ও অন্যান্য চলমান চাকরির সকল তথ্য সরাসরি দেখুন
+            </p>
           </div>
         </div>
       </div>
 
-      {/* 2. Search Box */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="পদ, প্রতিষ্ঠান বা সার্কুলার নাম লিখে খুঁজুন..."
-          className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm neu-inset rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#005a36] font-medium"
-        />
-      </div>
-
-      {/* 3. Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+      {/* 2. Filter Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
         <button
           onClick={() => setSelectedFilter('all')}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             selectedFilter === 'all'
-              ? 'bg-[#005a36] text-white shadow-sm'
+              ? 'neu-btn-primary text-white shadow-xs'
               : 'neu-btn text-slate-700 dark:text-slate-300'
           }`}
         >
-          সকল সার্কুলার
+          সকল সার্কুলার ({circulars.length})
         </button>
 
         <button
           onClick={() => setSelectedFilter('ntrca')}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             selectedFilter === 'ntrca'
-              ? 'bg-[#005a36] text-white shadow-sm'
+              ? 'neu-btn-primary text-white shadow-xs'
               : 'neu-btn text-slate-700 dark:text-slate-300'
           }`}
         >
@@ -213,20 +342,20 @@ export const CircularsView: React.FC = () => {
 
         <button
           onClick={() => setSelectedFilter('madrasah')}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             selectedFilter === 'madrasah'
-              ? 'bg-[#005a36] text-white shadow-sm'
+              ? 'neu-btn-primary text-white shadow-xs'
               : 'neu-btn text-slate-700 dark:text-slate-300'
           }`}
         >
-          মাদ্রাসা ও কারিগরি
+          মাদ্রাসা অধিদপ্তর ও বিপিএসসি
         </button>
 
         <button
           onClick={() => setSelectedFilter('primary')}
-          className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
             selectedFilter === 'primary'
-              ? 'bg-[#005a36] text-white shadow-sm'
+              ? 'neu-btn-primary text-white shadow-xs'
               : 'neu-btn text-slate-700 dark:text-slate-300'
           }`}
         >
@@ -234,18 +363,19 @@ export const CircularsView: React.FC = () => {
         </button>
       </div>
 
-      {/* 4. Section Header */}
-      <div className="flex items-center justify-between pt-1">
-        <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-          <span>সর্বশেষ শিক্ষক নিয়োগ সার্কুলারসমূহ</span>
-          <span className="text-xs text-slate-500 font-normal">({filteredCirculars.length}টি)</span>
-        </h3>
-        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-          নিয়মিত হালনাগাদকৃত
-        </span>
+      {/* 3. Search Box */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="সার্কুলার খুঁজুন (যেমন: শিক্ষক নিবন্ধন, সহকারী মৌলভী, প্রভাষক)..."
+          className="w-full pl-11 pr-4 py-3 text-xs sm:text-sm neu-inset rounded-2xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#005a36] font-medium"
+        />
       </div>
 
-      {/* 5. Circular Cards List */}
+      {/* 4. Circular Cards List */}
       <div className="space-y-3.5">
         {filteredCirculars.map((item) => {
           const isSaved = bookmarkedIds.includes(item.id);
@@ -254,25 +384,25 @@ export const CircularsView: React.FC = () => {
             <div
               key={item.id}
               onClick={() => setSelectedCircular(item)}
-              className="p-4 sm:p-5 rounded-3xl neu-card hover:shadow-md transition-all cursor-pointer relative group"
+              className="p-4 sm:p-5 rounded-3xl neu-card hover:shadow-md transition-all cursor-pointer relative group border border-slate-200/60 dark:border-slate-800/80 hover:border-emerald-600/40"
             >
               {/* Hot badge & Tag */}
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300/60 dark:border-slate-700">
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-[#005a36]/10 dark:bg-emerald-950/60 text-[#005a36] dark:text-emerald-300 border border-emerald-600/30">
                   {item.tag}
                 </span>
 
                 {item.isHot && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#121c30] text-amber-300 border border-slate-700 flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-slate-950 border border-amber-300 flex items-center gap-1 shadow-2xs">
                     <span>হট সার্কুলার</span>
-                    <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <Flame className="w-3.5 h-3.5 fill-slate-950" />
                   </span>
                 )}
               </div>
 
               {/* Organization */}
               <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
-                <Building2 className="w-3.5 h-3.5 shrink-0" />
+                <Building2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
                 <span className="truncate">{item.organization}</span>
               </div>
 
@@ -282,10 +412,10 @@ export const CircularsView: React.FC = () => {
               </h4>
 
               {/* Meta information row */}
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-semibold mb-3.5">
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs font-semibold mb-3.5">
                 <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 bg-[#e4e9f2] dark:bg-[#142033] px-2.5 py-1 rounded-xl">
                   <Briefcase className="w-3.5 h-3.5 text-slate-500" />
-                  <span>পদসংখ্যা: <strong className="text-slate-900 dark:text-slate-100">{item.vacancies}</strong></span>
+                  <span>পদসংখ্যা: <strong className="text-[#005a36] dark:text-emerald-400">{item.vacancies}</strong></span>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-xl border border-red-200 dark:border-red-900/50">
@@ -310,7 +440,7 @@ export const CircularsView: React.FC = () => {
                   </button>
 
                   <div className="flex items-center gap-0.5 font-bold text-[#005a36] dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
-                    <span>বিস্তারিত দেখুন</span>
+                    <span>সরাসরি দেখুন</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -319,136 +449,6 @@ export const CircularsView: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Circular Details Modal */}
-      {selectedCircular && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div 
-            className="fixed inset-0" 
-            onClick={() => setSelectedCircular(null)} 
-          />
-
-          <div className="relative w-full max-w-lg bg-[#e9edf5] dark:bg-[#101927] rounded-3xl neu-card shadow-2xl flex flex-col overflow-hidden z-10 max-h-[85vh]">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 bg-[#005a36] text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                  <Briefcase className="w-5 h-5 text-amber-300" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2 py-0.2 rounded-full">
-                    {selectedCircular.tag}
-                  </span>
-                  <h3 className="font-extrabold text-sm sm:text-base text-white mt-0.5 line-clamp-1">
-                    সার্কুলার বিস্তারিত
-                  </h3>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedCircular(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 no-scrollbar">
-              <div>
-                <h4 className="font-black text-base sm:text-lg text-slate-900 dark:text-slate-100 leading-snug">
-                  {selectedCircular.title}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 font-medium">
-                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                  {selectedCircular.organization}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="p-3 rounded-2xl neu-inset">
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">মোট পদসংখ্যা</span>
-                  <strong className="text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-extrabold">{selectedCircular.vacancies}</strong>
-                </div>
-
-                <div className="p-3 rounded-2xl neu-inset">
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">আবেদনের শেষ সময়</span>
-                  <strong className="text-xs sm:text-sm text-red-600 dark:text-red-400 font-extrabold">{selectedCircular.deadline}</strong>
-                </div>
-
-                {selectedCircular.salaryScale && (
-                  <div className="p-3 rounded-2xl neu-inset">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">বেতন স্কেল</span>
-                    <strong className="text-xs text-slate-900 dark:text-slate-100 font-bold">{selectedCircular.salaryScale}</strong>
-                  </div>
-                )}
-
-                {selectedCircular.ageLimit && (
-                  <div className="p-3 rounded-2xl neu-inset">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-semibold">বয়সসীমা</span>
-                    <strong className="text-xs text-slate-900 dark:text-slate-100 font-bold">{selectedCircular.ageLimit}</strong>
-                  </div>
-                )}
-              </div>
-
-              {selectedCircular.educationalReq && (
-                <div className="p-3.5 rounded-2xl neu-card">
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100 block mb-1">
-                    শিক্ষাগত যোগ্যতা ও শর্তাবলি:
-                  </span>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                    {selectedCircular.educationalReq}
-                  </p>
-                </div>
-              )}
-
-              {selectedCircular.description && (
-                <div className="p-3.5 rounded-2xl neu-card">
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100 block mb-1">
-                    বিবরণ:
-                  </span>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                    {selectedCircular.description}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3.5 sm:p-4 bg-[#e4e9f2] dark:bg-[#0b121d] border-t border-white/60 dark:border-slate-800 flex items-center justify-between gap-3">
-              <button
-                onClick={() => {
-                  setSelectedCircular(null);
-                  setActiveTab('exams');
-                }}
-                className="px-4 py-2 rounded-xl neu-btn text-xs font-bold text-[#005a36] dark:text-emerald-400 flex items-center gap-1.5 cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>মডেল টেস্ট দিন</span>
-              </button>
-
-              {selectedCircular.applyLink ? (
-                <a
-                  href={selectedCircular.applyLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-5 py-2 rounded-xl neu-btn-primary text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95"
-                >
-                  <span>অনলাইনে আবেদন করুন</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              ) : (
-                <button
-                  onClick={() => setSelectedCircular(null)}
-                  className="px-5 py-2 rounded-xl neu-btn-primary text-xs font-bold"
-                >
-                  বন্ধ করুন
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

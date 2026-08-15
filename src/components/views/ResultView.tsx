@@ -48,8 +48,28 @@ export const ResultView: React.FC = () => {
 
   if (!viewingResult) return null;
 
-  // Find the original exam to match full questions
-  const exam = mockExams.find((e) => e.id === viewingResult.examId) || mockExams[0];
+  // Find or reconstruct the exact target exam matching viewingResult.examId and totalMarks
+  const exam = useMemo(() => {
+    const found = mockExams.find((e) => e.id === viewingResult.examId);
+    if (found) return found;
+
+    const totalQ = (viewingResult.correctAnswers + viewingResult.wrongAnswers + (viewingResult.skippedAnswers || 0)) || viewingResult.totalMarks || 20;
+    const totalM = viewingResult.totalMarks || totalQ;
+
+    return {
+      id: viewingResult.examId,
+      title: viewingResult.examTitle,
+      category: 'subject' as const,
+      subject: 'পরীক্ষা',
+      totalMarks: totalM,
+      durationMinutes: Math.ceil(totalQ * 0.75),
+      negativeMarking: 0.25,
+      totalQuestions: totalQ,
+      status: 'running' as const,
+      participantsCount: 1250,
+      questions: []
+    };
+  }, [viewingResult]);
 
   const percentage = Math.round((viewingResult.score / (viewingResult.totalMarks || 1)) * 100);
   const isPassed = percentage >= 40;

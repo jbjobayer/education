@@ -8,7 +8,9 @@ import {
   AlertTriangle, 
   Send, 
   Sparkles, 
-  Inbox 
+  Inbox,
+  Lock,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ExamResult } from '../../types';
@@ -20,7 +22,7 @@ import {
 } from '../../utils/questionUtils';
 
 export const ExamModal: React.FC = () => {
-  const { activeExam, closeExam, saveExamResult } = useApp();
+  const { activeExam, closeExam, saveExamResult, showToast } = useApp();
   const { formatArabicText } = useFont();
 
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -68,18 +70,15 @@ export const ExamModal: React.FC = () => {
   };
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
-    setAnswers((prev) => {
-      // Toggle or select
-      if (prev[questionId] === optionIndex) {
-        const copy = { ...prev };
-        delete copy[questionId];
-        return copy;
-      }
-      return {
-        ...prev,
-        [questionId]: optionIndex,
-      };
-    });
+    // STRICT LOCK: Once an option is selected for a question, it CANNOT be changed or deselected
+    if (answers[questionId] !== undefined) {
+      showToast('একবার উত্তর নির্বাচন করার পর তা লক হয়ে যায় এবং আর পরিবর্তন করা যায় না।', 'info');
+      return;
+    }
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionIndex,
+    }));
   };
 
   const handleSubmitExam = () => {
@@ -269,15 +268,18 @@ export const ExamModal: React.FC = () => {
                     <button
                       key={optIdx}
                       type="button"
+                      disabled={hasSelected && !isOptSelected}
                       onClick={() => handleSelectOption(question.id, optIdx)}
-                      className={`w-full p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer text-sm font-bold ${
+                      className={`w-full p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center gap-3 text-sm font-bold ${
                         optionsConfig.isRTL 
                           ? 'flex-row-reverse text-right' 
                           : 'flex-row text-left'
                       } ${
                         isOptSelected
-                          ? 'bg-emerald-50 dark:bg-emerald-950/50 border-[#004d2e] dark:border-emerald-500 text-[#004d2e] dark:text-emerald-300 shadow-xs scale-[1.005]'
-                          : 'bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100/90 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-600 dark:border-emerald-500 text-[#004d2e] dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/40 cursor-default'
+                          : hasSelected
+                          ? 'bg-slate-100/50 dark:bg-slate-800/30 border-slate-200/50 dark:border-slate-800 text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed'
+                          : 'bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100/90 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer active:scale-[0.99]'
                       }`}
                     >
                       {/* Option Letter Indicator */}
@@ -298,10 +300,31 @@ export const ExamModal: React.FC = () => {
                       >
                         {formatArabicText(opt)}
                       </span>
+
+                      {/* Selected Lock Badge */}
+                      {isOptSelected && (
+                        <span className="shrink-0 flex items-center gap-1 text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-2xs">
+                          <Lock className="w-2.5 h-2.5" />
+                          <span>লকড</span>
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              {/* Locked Answer Feedback Bar */}
+              {hasSelected && (
+                <div className="mt-3 pt-2.5 border-t border-emerald-500/20 flex items-center justify-between text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                  <span className="flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span>উত্তর চূড়ান্তভাবে সংরক্ষিত ও লক করা হয়েছে (পরিবর্তন অযোগ্য)</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md border border-emerald-500/30 text-emerald-900 dark:text-emerald-300 font-bold">
+                    লকড ✓
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
