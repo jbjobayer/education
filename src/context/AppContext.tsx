@@ -53,7 +53,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<MainTab>('home');
   const [selectedCategory, setSelectedCategory] = useState<CourseCategory>('all');
   const [courses, setCourses] = useState<Course[]>(mockCourses);
-  const [exams, setExams] = useState<Exam[]>(mockExams);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [notices, setNotices] = useState<Notice[]>(mockNotices);
   const [routines] = useState<RoutineItem[]>(mockRoutines);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
@@ -86,9 +86,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabaseService.getNotices()
       ]);
 
-      if (remoteExams.length > 0) setExams(remoteExams);
-      if (remoteCourses.length > 0) setCourses(remoteCourses);
-      if (remoteNotices.length > 0) setNotices(remoteNotices);
+      setExams(remoteExams);
+      if (remoteCourses && remoteCourses.length > 0) setCourses(remoteCourses);
+      if (remoteNotices && remoteNotices.length > 0) setNotices(remoteNotices);
 
       const connCheck = await testSupabaseConnection();
       setIsSupabaseConnected(connCheck.success);

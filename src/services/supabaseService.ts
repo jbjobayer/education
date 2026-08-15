@@ -6,7 +6,7 @@ export const supabaseService = {
   // 1. Fetch Dynamic Exams created from Admin Panel
   async getExams(): Promise<Exam[]> {
     const supabase = getSupabase();
-    if (!supabase) return mockExams;
+    if (!supabase) return [];
 
     try {
       const { data, error } = await supabase
@@ -15,8 +15,8 @@ export const supabaseService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Supabase fetch exams error, using fallback:', error.message);
-        return mockExams;
+        console.warn('Supabase fetch exams error:', error.message);
+        return [];
       }
 
       if (data && data.length > 0) {
@@ -31,22 +31,19 @@ export const supabaseService = {
           negativeMarking: Number(item.negative_marking ?? item.negativeMarking ?? 0.25),
           totalQuestions: Number(item.total_questions || item.totalQuestions || (item.questions?.length || 20)),
           status: item.status || 'running',
-          participantsCount: Number(item.participants_count || 1200),
+          participantsCount: Number(item.participants_count || 0),
           questions: Array.isArray(item.questions) ? item.questions : [],
           isFree: item.is_free ?? item.isFree ?? false,
           dateStr: item.date_str || item.dateStr
         }));
 
-        // Merge with mockExams so default standard tests always remain accessible
-        const existingIds = new Set(remoteExams.map(e => e.id));
-        const nonDuplicateMock = mockExams.filter(e => !existingIds.has(e.id));
-        return [...remoteExams, ...nonDuplicateMock];
+        return remoteExams;
       }
 
-      return mockExams;
+      return [];
     } catch (e) {
       console.warn('Exception in getExams:', e);
-      return mockExams;
+      return [];
     }
   },
 

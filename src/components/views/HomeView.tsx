@@ -19,7 +19,7 @@ import {
   TrendingUp,
   MessageSquare
 } from 'lucide-react';
-import { mockBannerSlides, mockExams, mockCourses, mockRoutines } from '../../data/mockData';
+import { mockBannerSlides, mockCourses, mockRoutines } from '../../data/mockData';
 import { CourseCard } from '../CourseCard';
 
 export const HomeView: React.FC = () => {
@@ -31,7 +31,8 @@ export const HomeView: React.FC = () => {
     setIsNotificationOpen,
     searchQuery,
     setSelectedCategory,
-    enrolledCourseIds
+    enrolledCourseIds,
+    exams
   } = useApp();
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -270,62 +271,64 @@ export const HomeView: React.FC = () => {
       </div>
 
       {/* Live Exams Section with Neumorphic Cards */}
-      <div>
-        <div className="flex items-center justify-between mb-3.5">
-          <div>
-            <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-500" />
-              চলমান লাইভ মডেল টেস্ট
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">রিয়েলটাইম ওএমআর স্কোর ও জাতীয় মেধা তালিকা</p>
+      {exams.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3.5">
+            <div>
+              <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                চলমান লাইভ মডেল টেস্ট
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">রিয়েলটাইম ওএমআর স্কোর ও জাতীয় মেধা তালিকা</p>
+            </div>
+
+            <button
+              onClick={() => setActiveTab('exams')}
+              className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-0.5"
+            >
+              <span>সব পরীক্ষা</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          <button
-            onClick={() => setActiveTab('exams')}
-            className="px-3 py-1.5 rounded-xl neu-btn text-xs font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-0.5"
-          >
-            <span>সব পরীক্ষা</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="space-y-3.5">
-          {mockExams.slice(0, 2).map((exam) => (
-            <div
-              key={exam.id}
-              className="p-4 sm:p-5 rounded-3xl neu-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className="w-12 h-12 rounded-2xl neu-btn text-emerald-800 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <FileCheck2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
-                      লাইভ এক্সাম
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">{exam.subject}</span>
-                  </div>
-                  <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 mt-1">{exam.title}</h4>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                    <span>পূর্ণমান: <strong className="text-slate-800 dark:text-slate-200">{exam.totalMarks}</strong></span>
-                    <span>সময়: <strong className="text-slate-800 dark:text-slate-200">{exam.durationMinutes} মিনিট</strong></span>
-                    <span>অংশগ্রহণকারী: <strong className="text-slate-800 dark:text-slate-200">{exam.participantsCount}+</strong></span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => startExam(exam)}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl neu-btn-primary font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0"
+          <div className="space-y-3.5">
+            {exams.slice(0, 2).map((exam) => (
+              <div
+                key={exam.id}
+                className="p-4 sm:p-5 rounded-3xl neu-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               >
-                <Zap className="w-4 h-4 text-amber-300" />
-                <span>পরীক্ষায় অংশ নিন</span>
-              </button>
-            </div>
-          ))}
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl neu-btn text-emerald-800 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <FileCheck2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                        লাইভ এক্সাম
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">{exam.subject}</span>
+                    </div>
+                    <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 mt-1">{exam.title}</h4>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                      <span>পূর্ণমান: <strong className="text-slate-800 dark:text-slate-200">{exam.totalMarks}</strong></span>
+                      <span>সময়: <strong className="text-slate-800 dark:text-slate-200">{exam.durationMinutes} মিনিট</strong></span>
+                      <span>অংশগ্রহণকারী: <strong className="text-slate-800 dark:text-slate-200">{exam.participantsCount || 0}+</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => startExam(exam)}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl neu-btn-primary font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 text-amber-300" />
+                  <span>পরীক্ষায় অংশ নিন</span>
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* AI Mentor Showcase Neumorphic Banner */}
       <div className="p-5 sm:p-6 rounded-3xl neu-card bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 text-white flex flex-col sm:flex-row items-center justify-between gap-4">

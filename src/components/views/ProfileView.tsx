@@ -54,7 +54,7 @@ import {
   Radio,
   Lock
 } from 'lucide-react';
-import { mockExams, mockQuestions } from '../../data/mockData';
+import { mockQuestions } from '../../data/mockData';
 import { useFont, BanglaFont, ArabicFont } from '../../context/FontContext';
 import { getUnifiedQuestionText, getTextDirection, parseQuestionData, getOptionsConfig } from '../../utils/questionUtils';
 import { Exam, ExamResult, LeaderboardEntry } from '../../types';
@@ -79,6 +79,7 @@ export const ProfileView: React.FC = () => {
     updateUserProfile, 
     enrolledCourseIds, 
     courses, 
+    exams,
     examResults, 
     bookmarks, 
     toggleBookmark,
@@ -104,7 +105,7 @@ export const ProfileView: React.FC = () => {
   const [activeSection, setActiveSection] = useState<ProfileSection>('menu');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
-  const [selectedLeaderboardExamId, setSelectedLeaderboardExamId] = useState<string>(mockExams[0]?.id || 'exam-hadith');
+  const [selectedLeaderboardExamId, setSelectedLeaderboardExamId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Supabase Database Connection Configuration State
@@ -159,7 +160,7 @@ export const ProfileView: React.FC = () => {
     const wrongList: { question: any; examTitle: string; selectedAnswerText: string; correctAnswerText: string }[] = [];
     
     examResults.forEach(res => {
-      const exam = mockExams.find(e => e.id === res.examId);
+      const exam = exams.find(e => e.id === res.examId);
       if (exam && res.userAnswers) {
         exam.questions.forEach((q, idx) => {
           const userSelectedIdx = res.userAnswers[q.id];
@@ -215,14 +216,16 @@ export const ProfileView: React.FC = () => {
 
   // Selected Exam for Leaderboard Tab
   const selectedLeaderboardExam = useMemo(() => {
-    return mockExams.find(e => e.id === selectedLeaderboardExamId) || mockExams[0];
-  }, [selectedLeaderboardExamId]);
+    return exams.find(e => e.id === selectedLeaderboardExamId) || exams[0] || null;
+  }, [exams, selectedLeaderboardExamId]);
 
   const userExamResultForSelected = useMemo(() => {
+    if (!selectedLeaderboardExam) return undefined;
     return examResults.find(r => r.examId === selectedLeaderboardExam.id);
   }, [examResults, selectedLeaderboardExam]);
 
   const examLeaderboardEntries = useMemo(() => {
+    if (!selectedLeaderboardExam) return [];
     return generateExamLeaderboard(selectedLeaderboardExam, userExamResultForSelected, userProfile);
   }, [selectedLeaderboardExam, userExamResultForSelected, userProfile]);
 
@@ -1063,51 +1066,61 @@ export const ProfileView: React.FC = () => {
           </div>
 
           {/* Exam Selector Carousel / Pill Switcher */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 shadow-xs space-y-2">
-            <label className="text-xs font-bold text-slate-500 block">পরীক্ষা নির্বাচন করুন:</label>
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              {mockExams.map((exam) => (
-                <button
-                  key={exam.id}
-                  onClick={() => setSelectedLeaderboardExamId(exam.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                    selectedLeaderboardExamId === exam.id
-                      ? 'bg-[#004d2e] text-white shadow-sm scale-102'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                  }`}
-                >
-                  {exam.title} ({exam.subject})
-                </button>
-              ))}
+          {exams.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 text-center text-slate-500">
+              <p className="text-xs font-bold">এখনো কোনো পরীক্ষা যুক্ত করা হয়নি।</p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 shadow-xs space-y-2">
+                <label className="text-xs font-bold text-slate-500 block">পরীক্ষা নির্বাচন করুন:</label>
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                  {exams.map((exam) => (
+                    <button
+                      key={exam.id}
+                      onClick={() => setSelectedLeaderboardExamId(exam.id)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                        (selectedLeaderboardExamId === exam.id || (!selectedLeaderboardExamId && exams[0]?.id === exam.id))
+                          ? 'bg-[#004d2e] text-white shadow-sm scale-102'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {exam.title} ({exam.subject})
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* Selected Exam Meta Card */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 rounded-2xl p-3.5 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h4 className="font-extrabold text-sm text-[#004d2e] dark:text-emerald-300">
-                {selectedLeaderboardExam.title}
-              </h4>
-              <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                বিষয়: {selectedLeaderboardExam.subject} • মোট প্রশ্ন: {selectedLeaderboardExam.totalQuestions}টি • পূর্ণমান: {selectedLeaderboardExam.totalMarks}
-              </p>
-            </div>
+              {/* Selected Exam Meta Card */}
+              {selectedLeaderboardExam && (
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 rounded-2xl p-3.5 border border-emerald-200/80 dark:border-emerald-800 flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-[#004d2e] dark:text-emerald-300">
+                      {selectedLeaderboardExam.title}
+                    </h4>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                      বিষয়: {selectedLeaderboardExam.subject} • মোট প্রশ্ন: {selectedLeaderboardExam.totalQuestions}টি • পূর্ণমান: {selectedLeaderboardExam.totalMarks}
+                    </p>
+                  </div>
 
-            <div className="flex items-center gap-2">
-              {userExamResultForSelected ? (
-                <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full">
-                  আপনার প্রাপ্ত নম্বর: {userExamResultForSelected.score}/{selectedLeaderboardExam.totalMarks}
-                </span>
-              ) : (
-                <button
-                  onClick={() => startExam(selectedLeaderboardExam)}
-                  className="bg-[#004d2e] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs"
-                >
-                  পরীক্ষায় অংশ নিন
-                </button>
+                  <div className="flex items-center gap-2">
+                    {userExamResultForSelected ? (
+                      <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full">
+                        আপনার প্রাপ্ত নম্বর: {userExamResultForSelected.score}/{selectedLeaderboardExam.totalMarks}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => startExam(selectedLeaderboardExam)}
+                        className="bg-[#004d2e] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs"
+                      >
+                        পরীক্ষায় অংশ নিন
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Render Isolated Leaderboard Entries List */}
           <div className="space-y-2.5">

@@ -17,13 +17,13 @@ import {
   Users, 
   Calendar,
   Sparkles,
-  Trophy
+  Trophy,
+  RefreshCw
 } from 'lucide-react';
-import { mockExams } from '../../data/mockData';
 import { Exam } from '../../types';
 
 export const ExamsView: React.FC = () => {
-  const { startExam, examResults, setViewingResult, setResultSubTab } = useApp();
+  const { exams, startExam, examResults, setViewingResult, setResultSubTab, refreshFromDatabase, isLoadingData } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'free'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
@@ -33,11 +33,11 @@ export const ExamsView: React.FC = () => {
   // Subject list extracted from exams
   const subjects = useMemo(() => {
     const set = new Set<string>();
-    mockExams.forEach(e => {
+    exams.forEach(e => {
       if (e.subject) set.add(e.subject);
     });
     return Array.from(set);
-  }, []);
+  }, [exams]);
 
   const handleShare = (examTitle: string) => {
     if (navigator.share) {
@@ -54,7 +54,7 @@ export const ExamsView: React.FC = () => {
   };
 
   const filteredExams = useMemo(() => {
-    return mockExams.filter((exam) => {
+    return exams.filter((exam) => {
       // Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -78,14 +78,14 @@ export const ExamsView: React.FC = () => {
       return true;
     }).sort((a, b) => {
       if (sortOrder === 'participants') {
-        return b.participantsCount - a.participantsCount;
+        return (b.participantsCount || 0) - (a.participantsCount || 0);
       }
       if (sortOrder === 'marks') {
         return b.totalMarks - a.totalMarks;
       }
       return 0; // default latest order
     });
-  }, [searchQuery, activeFilter, selectedSubject, sortOrder]);
+  }, [exams, searchQuery, activeFilter, selectedSubject, sortOrder]);
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-24 animate-fadeIn">
@@ -232,18 +232,40 @@ export const ExamsView: React.FC = () => {
       {/* 3. Exam Cards List (Matching Screenshots 1, 2, 3) */}
       <div className="space-y-4">
         {filteredExams.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center text-slate-500 border border-slate-100 dark:border-slate-800 shadow-sm">
-            <p className="text-sm font-bold">কোনো পরীক্ষা পাওয়া যায়নি।</p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setActiveFilter('all');
-                setSelectedSubject('all');
-              }}
-              className="mt-3 px-4 py-2 bg-[#004d2e] text-white rounded-xl text-xs font-bold"
-            >
-              সব পরীক্ষা দেখুন
-            </button>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 text-center text-slate-500 border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shadow-inner">
+              <FileText className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-200">
+              {exams.length === 0 ? 'এখনো কোনো পরীক্ষা যুক্ত করা হয়নি' : 'কোনো পরীক্ষা পাওয়া যায়নি'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+              {exams.length === 0 
+                ? 'এডমিন প্যানেল থেকে নতুন পরীক্ষা বা ওএমআর প্রশ্ন তৈরি করলে তা সরাসরি এখানে লাইভ চলে আসবে।'
+                : 'আপনার অনুসন্ধান বা ফিল্টারের সাথে মিলে এমন কোনো পরীক্ষা নেই।'}
+            </p>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveFilter('all');
+                  setSelectedSubject('all');
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                ফিল্টার রিসেট
+              </button>
+              <button
+                onClick={async () => {
+                  await refreshFromDatabase();
+                }}
+                disabled={isLoadingData}
+                className="px-4 py-2 bg-[#004d2e] hover:bg-[#003822] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingData ? 'animate-spin' : ''}`} />
+                <span>{isLoadingData ? 'লোড হচ্ছে...' : 'ডাটা রিফ্রেশ করুন'}</span>
+              </button>
+            </div>
           </div>
         ) : (
           filteredExams.map((exam) => {
