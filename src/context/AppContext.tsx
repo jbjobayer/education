@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Course, CourseCategory, Exam, ExamResult, MainTab, Notice, RoutineItem, UserProfile } from '../types';
 import { mockCourses, mockExams, mockNotices, mockRoutines } from '../data/mockData';
+import { supabaseService } from '../services/supabaseService';
+import { isSupabaseConfigured, testSupabaseConnection } from '../lib/supabase';
 
 interface AppContextType {
   activeTab: MainTab;
@@ -26,7 +28,7 @@ interface AppContextType {
   toggleBookmark: (questionId: string) => void;
   userProfile: UserProfile;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
-  subscribeToPackage: (planId: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly', planName: string, durationMonths: number) => void;
+  subscribeToPackage: (planId: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly', planName: string, durationMonths: number, paymentDetails?: { gateway: 'bkash' | 'nagad' | 'rocket'; trxId: string; phone: string }) => void;
   isPremiumMember: boolean;
   isNotificationOpen: boolean;
   setIsNotificationOpen: (open: boolean) => void;
@@ -40,6 +42,9 @@ interface AppContextType {
   setViewingResult: (res: ExamResult | null) => void;
   resultSubTab: 'explanation' | 'leaderboard';
   setResultSubTab: (tab: 'explanation' | 'leaderboard') => void;
+  isSupabaseConnected: boolean;
+  refreshFromDatabase: () => Promise<void>;
+  isLoadingData: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -47,10 +52,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<MainTab>('home');
   const [selectedCategory, setSelectedCategory] = useState<CourseCategory>('all');
-  const [courses] = useState<Course[]>(mockCourses);
-  const [exams] = useState<Exam[]>(mockExams);
-  const [notices] = useState<Notice[]>(mockNotices);
+  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [exams, setExams] = useState<Exam[]>(mockExams);
+  const [notices, setNotices] = useState<Notice[]>(mockNotices);
   const [routines] = useState<RoutineItem[]>(mockRoutines);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
   
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('tamreen_enrolled');
@@ -69,6 +76,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [checkoutCourse, setCheckoutCourse] = useState<Course | null>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isRoutineOpen, setIsRoutineOpen] = useState(false);
+
+  const refreshFromDatabase = async () => {
+    setIsLoadingData(true);
+    try {
+      const [remoteExams, remoteCourses, remoteNotices] = await Promise.all([
+        supabaseService.getExams(),
+        supabaseService.getCourses(),
+        supabaseService.getNotices()
+      ]);
+
+      if (remoteExams.length > 0) setExams(remoteExams);
+      if (remoteCourses.length > 0) setCourses(remoteCourses);
+      if (remoteNotices.length > 0) setNotices(remoteNotices);
+
+      const connCheck = await testSupabaseConnection();
+      setIsSupabaseConnected(connCheck.success);
+    } catch (err) {
+      console.warn('Error refreshing data from database:', err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    refreshFromDatabase();
+  }, []);
 
   const handleSetActiveTab = (tab: MainTab) => {
     setViewingResult(null);
@@ -148,6 +182,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('tamreen_results', JSON.stringify(newResults));
     setViewingResult(result);
     showToast('পরীক্ষা সফলভাবে সম্পন্ন হয়েছে!', 'success');
+
+    // Asynchronously submit result to Supabase for central leaderboard
+    supabaseService.submitExamResult(result, userProfile).catch(() => {});
   };
 
   const toggleBookmark = (questionId: string) => {
@@ -171,7 +208,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে');
   };
 
-  const subscribeToPackage = (planId: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly', planName: string, durationMonths: number) => {
+  const subscribeToPackage = (
+    planId: 'monthly' | 'quarterly' | 'half_yearly' | 'yearly', 
+    planName: string, 
+    durationMonths: number,
+    paymentDetails?: { gateway: 'bkash' | 'nagad' | 'rocket'; trxId: string; phone: string }
+  ) => {
     const expiryDate = new Date();
     expiryDate.setMonth(expiryDate.getMonth() + durationMonths);
     const expiryDateStr = expiryDate.toLocaleDateString('bn-BD', {
@@ -191,6 +233,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUserProfile(updatedProfile);
     localStorage.setItem('tamreen_user_profile', JSON.stringify(updatedProfile));
     showToast(`অভিনন্দন! আপনার ${planName} সাবস্ক্রিপশন সফলভাবে সক্রিয় হয়েছে।`, 'success');
+
+    // Send payment request to Supabase admin panel
+    if (paymentDetails) {
+      supabaseService.submitPayment({
+        userPhone: paymentDetails.phone || userProfile.phone,
+        userName: userProfile.name,
+        gateway: paymentDetails.gateway,
+        trxId: paymentDetails.trxId,
+        planName: planName,
+        amount: planId === 'monthly' ? 199 : planId === 'quarterly' ? 499 : planId === 'half_yearly' ? 899 : 1499
+      }).catch(() => {});
+    }
   };
 
   const isPremiumMember = Boolean(userProfile.isPremium || userProfile.subscriptionPlanId);
@@ -235,6 +289,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setViewingResult,
         resultSubTab,
         setResultSubTab,
+        isSupabaseConnected,
+        refreshFromDatabase,
+        isLoadingData,
       }}
     >
       {children}

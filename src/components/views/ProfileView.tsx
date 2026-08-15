@@ -48,13 +48,18 @@ import {
   ArrowLeft,
   GraduationCap,
   Sliders,
-  Check
+  Check,
+  Database,
+  Server,
+  Radio,
+  Lock
 } from 'lucide-react';
 import { mockExams, mockQuestions } from '../../data/mockData';
 import { useFont, BanglaFont, ArabicFont } from '../../context/FontContext';
 import { getUnifiedQuestionText, getTextDirection, parseQuestionData, getOptionsConfig } from '../../utils/questionUtils';
 import { Exam, ExamResult, LeaderboardEntry } from '../../types';
 import { generateExamLeaderboard } from '../../utils/leaderboardUtils';
+import { getSupabaseConfig, saveSupabaseConfig, testSupabaseConnection, isSupabaseConfigured } from '../../lib/supabase';
 
 type ProfileSection = 
   | 'menu' 
@@ -82,7 +87,10 @@ export const ProfileView: React.FC = () => {
     setViewingResult,
     setResultSubTab,
     startExam,
-    showToast 
+    showToast,
+    isSupabaseConnected,
+    refreshFromDatabase,
+    isLoadingData
   } = useApp();
 
   const { 
@@ -98,6 +106,13 @@ export const ProfileView: React.FC = () => {
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
   const [selectedLeaderboardExamId, setSelectedLeaderboardExamId] = useState<string>(mockExams[0]?.id || 'exam-hadith');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Supabase Database Connection Configuration State
+  const initialDbConfig = useMemo(() => getSupabaseConfig(), []);
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(initialDbConfig.supabaseUrl);
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(initialDbConfig.supabaseAnonKey);
+  const [isTestingDb, setIsTestingDb] = useState(false);
+  const [dbTestResult, setDbTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Profile Edit Form State
   const [editName, setEditName] = useState(userProfile.name || 'মুহাম্মদ জোবায়ের হোসাইন');
@@ -1321,6 +1336,117 @@ export const ProfileView: React.FC = () => {
                 >
                   <div className={`w-4 h-4 rounded-full bg-white transition-transform ${userProfile.smsAlerts ? 'translate-x-6' : 'translate-x-0'}`} />
                 </button>
+              </div>
+            </div>
+
+            {/* Supabase & Admin Panel Sync Configuration */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    isSupabaseConnected 
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' 
+                      : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+                  }`}>
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
+                      সুপাবেস (Supabase) ও এডমিন কানেকশন
+                    </h4>
+                    <span className="text-[11px] text-slate-500 block">
+                      এডমিন প্যানেলে তৈরি করা প্রশ্ন, পরীক্ষা ও কোর্স লাইভ সিন্ক
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full ${
+                    isSupabaseConnected
+                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                      : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${isSupabaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    {isSupabaseConnected ? 'সক্রিয় (Live)' : 'ফলব্যাক (Offline/Mock)'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Supabase Project URL
+                  </label>
+                  <input
+                    type="url"
+                    value={supabaseUrlInput}
+                    onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                    placeholder="https://your-project.supabase.co"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono focus:outline-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Supabase Anon / Public Key
+                  </label>
+                  <input
+                    type="password"
+                    value={supabaseKeyInput}
+                    onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono focus:outline-emerald-600"
+                  />
+                </div>
+
+                {dbTestResult && (
+                  <div className={`p-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                    dbTestResult.success
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                  }`}>
+                    {dbTestResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                    <span>{dbTestResult.message}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      saveSupabaseConfig(supabaseUrlInput, supabaseKeyInput);
+                      setIsTestingDb(true);
+                      setDbTestResult(null);
+                      const res = await testSupabaseConnection();
+                      setDbTestResult(res);
+                      setIsTestingDb(false);
+                      if (res.success) {
+                        showToast('ডাটাবেজ কনফিগারেশন সফলভাবে সংরক্ষিত হয়েছে!');
+                        await refreshFromDatabase();
+                      } else {
+                        showToast(res.message, 'error');
+                      }
+                    }}
+                    disabled={isTestingDb}
+                    className="px-4 py-2 rounded-xl bg-[#004d2e] hover:bg-[#003822] text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    {isTestingDb ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+                    <span>{isTestingDb ? 'যাচাই করা হচ্ছে...' : 'সেভ ও কানেকশন টেস্ট'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await refreshFromDatabase();
+                      showToast('এডমিন প্যানেলের সাথে ডাটা সিন্ক সম্পন্ন হয়েছে!');
+                    }}
+                    disabled={isLoadingData}
+                    className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingData ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingData ? 'লোড হচ্ছে...' : 'ডাটা রিফ্রেশ করুন'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
