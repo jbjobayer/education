@@ -10,15 +10,20 @@ export const CheckoutDrawer: React.FC = () => {
 
   if (!checkoutCourse) return null;
 
-  const handleEnroll = (e: React.FormEvent) => {
+  const handleEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    setTimeout(() => {
-      enrollInCourse(checkoutCourse.id, selectedMethod.toUpperCase());
+    try {
+      await enrollInCourse(
+        checkoutCourse.id, 
+        selectedMethod.toUpperCase(), 
+        trxId || `TXN${Date.now().toString().slice(-6)}`,
+        checkoutCourse.price
+      );
+    } finally {
       setIsProcessing(false);
       setCheckoutCourse(null);
-      setSelectedCourseDetails(null);
-    }, 900);
+    }
   };
 
   return (

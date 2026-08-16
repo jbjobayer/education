@@ -10,16 +10,18 @@ import {
   Sparkles, 
   Inbox,
   Lock,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { ExamResult } from '../../types';
+import { ExamResult, Question } from '../../types';
 import { 
   getUnifiedQuestionText, 
   getTextDirection, 
   getOptionsConfig,
   parseQuestionData 
 } from '../../utils/questionUtils';
+import { supabaseService } from '../../services/supabaseService';
 
 export const ExamModal: React.FC = () => {
   const { activeExam, closeExam, saveExamResult, showToast } = useApp();
@@ -30,6 +32,8 @@ export const ExamModal: React.FC = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadedQuestions, setLoadedQuestions] = useState<Question[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
   useEffect(() => {
     if (activeExam) {
@@ -37,6 +41,18 @@ export const ExamModal: React.FC = () => {
       setTimeLeft(activeExam.durationMinutes * 60);
       setShowExitConfirm(false);
       setShowSubmitConfirm(false);
+
+      if (activeExam.questions && activeExam.questions.length > 0) {
+        setLoadedQuestions(activeExam.questions);
+      } else {
+        setIsLoadingQuestions(true);
+        supabaseService.getExamQuestions(activeExam.id).then((qs) => {
+          setLoadedQuestions(qs);
+          setIsLoadingQuestions(false);
+        }).catch(() => {
+          setIsLoadingQuestions(false);
+        });
+      }
     }
   }, [activeExam]);
 
@@ -60,7 +76,8 @@ export const ExamModal: React.FC = () => {
 
   if (!activeExam) return null;
 
-  const totalQuestions = activeExam.questions.length;
+  const questionsList = loadedQuestions.length > 0 ? loadedQuestions : activeExam.questions;
+  const totalQuestions = questionsList.length;
   const answeredCount = Object.keys(answers).length;
 
   const formatTime = (seconds: number) => {
@@ -88,7 +105,7 @@ export const ExamModal: React.FC = () => {
     let wrongCount = 0;
     let skippedCount = 0;
 
-    activeExam.questions.forEach((q) => {
+    questionsList.forEach((q) => {
       const selected = answers[q.id];
       if (selected === undefined) {
         skippedCount += 1;
@@ -195,7 +212,13 @@ export const ExamModal: React.FC = () => {
         </div>
 
         {/* Question Cards List */}
-        {activeExam.questions.map((question, qIndex) => {
+        {isLoadingQuestions ? (
+          <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+            <Loader2 className="w-8 h-8 text-[#005a36] animate-spin" />
+            <p className="text-sm font-bold text-slate-600 dark:text-slate-400">প্রশ্নপত্র লোড হচ্ছে...</p>
+          </div>
+        ) : (
+          questionsList.map((question, qIndex) => {
           const selectedOption = answers[question.id];
           const hasSelected = selectedOption !== undefined;
           
@@ -327,7 +350,7 @@ export const ExamModal: React.FC = () => {
               )}
             </div>
           );
-        })}
+        }))}
 
         {/* Bottom Submit Action Plate */}
         <div className="pt-4 text-center">

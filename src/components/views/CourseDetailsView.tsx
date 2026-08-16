@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   ArrowLeft, 
@@ -29,8 +29,9 @@ import {
   FileCheck2,
   Share2
 } from 'lucide-react';
-import { Course, CourseExamItem, CourseLectureSheet, Exam } from '../../types';
+import { Course, CourseExamItem, CourseLectureSheet, Exam, RoutineItem, SyllabusTopic, LeaderboardEntry } from '../../types';
 import { mockExams, mockLeaderboardData, mockRoutines } from '../../data/mockData';
+import { supabaseService } from '../../services/supabaseService';
 
 type CourseTabType = 'details' | 'routine' | 'syllabus' | 'sheets' | 'exams' | 'leaderboard';
 
@@ -39,6 +40,7 @@ export const CourseDetailsView: React.FC = () => {
     selectedCourseDetails, 
     setSelectedCourseDetails, 
     enrolledCourseIds, 
+    pendingEnrollmentIds,
     setCheckoutCourse,
     startExam,
     setViewingResult,
@@ -50,18 +52,57 @@ export const CourseDetailsView: React.FC = () => {
   const [expandedModule, setExpandedModule] = useState<number>(0);
   const [readingSheet, setReadingSheet] = useState<CourseLectureSheet | null>(null);
 
+  const [dynamicSyllabus, setDynamicSyllabus] = useState<SyllabusTopic[] | null>(null);
+  const [dynamicSheets, setDynamicSheets] = useState<CourseLectureSheet[] | null>(null);
+  const [dynamicRoutines, setDynamicRoutines] = useState<RoutineItem[] | null>(null);
+  const [dynamicExams, setDynamicExams] = useState<CourseExamItem[] | null>(null);
+  const [dynamicLeaderboard, setDynamicLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+
+  useEffect(() => {
+    if (!selectedCourseDetails) return;
+    let isMounted = true;
+
+    const loadData = async () => {
+      try {
+        const [syl, sheets, rts, exms, ldb] = await Promise.all([
+          supabaseService.getCourseSyllabusModules(selectedCourseDetails.id),
+          supabaseService.getCourseMaterials(selectedCourseDetails.id),
+          supabaseService.getCourseRoutines(selectedCourseDetails.id),
+          supabaseService.getCourseExams(selectedCourseDetails.id),
+          supabaseService.getLeaderboard(selectedCourseDetails.id)
+        ]);
+
+        if (isMounted) {
+          if (syl && syl.length > 0) setDynamicSyllabus(syl);
+          if (sheets && sheets.length > 0) setDynamicSheets(sheets);
+          if (rts && rts.length > 0) setDynamicRoutines(rts);
+          if (exms && exms.length > 0) setDynamicExams(exms);
+          if (ldb && ldb.length > 0) setDynamicLeaderboard(ldb);
+        }
+      } catch {
+        // Fallback to initial course data
+      }
+    };
+
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCourseDetails?.id]);
+
   if (!selectedCourseDetails) return null;
 
   const course = selectedCourseDetails;
   const isEnrolled = enrolledCourseIds.includes(course.id);
+  const isPending = pendingEnrollmentIds.includes(course.id);
 
   // Convert numbers to Bengali digits
   const toBn = (num: number | string) => {
     return String(num).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[+d]);
   };
 
-  // Fallback sheets if not explicitly provided
-  const lectureSheets: CourseLectureSheet[] = course.sheets || [
+  // Lecture sheets (dynamic from Supabase or course data)
+  const lectureSheets: CourseLectureSheet[] = dynamicSheets || course.sheets || [
     {
       id: 'sh-1',
       title: 'উচ্চতর আরবি সাহিত্য ও বালাগাত নোট.pdf',
@@ -99,8 +140,8 @@ export const CourseDetailsView: React.FC = () => {
     },
   ];
 
-  // Fallback exams if not explicitly provided
-  const courseExamsList: CourseExamItem[] = course.courseExams || [
+  // Course exams (dynamic from Supabase or course data)
+  const courseExamsList: CourseExamItem[] = dynamicExams || course.courseExams || [
     {
       id: 'ce-1',
       examNumber: 'পরীক্ষা ০১',
@@ -144,14 +185,34 @@ export const CourseDetailsView: React.FC = () => {
   ];
 
   // Handler for starting practice exam
-  const handlePracticeExam = (examItem: CourseExamItem) => {
+  const handlePracticeExam = async (examItem: CourseExamItem) => {
+    if (!isEnrolled) {
+      if (isPending) {
+        showToast('আপনার ভর্তি আবেদনটি যাচাইাধীন রয়েছে। অনুমোদন সম্পন্ন হলে পরীক্ষা আনলক হবে।', 'info');
+      } else {
+        setCheckoutCourse(course);
+      }
+      return;
+    }
+
+    let questions: any[] = [];
+    if (examItem.examRefId) {
+      try {
+        questions = await supabaseService.getExamQuestions(examItem.examRefId);
+      } catch {
+        // fallback
+      }
+    }
+
     const targetExam = mockExams.find(e => e.id === examItem.examRefId) || mockExams[0];
     const customExam: Exam = {
       ...targetExam,
+      id: examItem.examRefId || examItem.id,
       title: `${examItem.examNumber}: ${examItem.topic}`,
       durationMinutes: examItem.durationMinutes,
       totalQuestions: examItem.questionCount,
       totalMarks: examItem.questionCount,
+      questions: questions.length > 0 ? questions : (targetExam?.questions || [])
     };
     startExam(customExam);
   };
@@ -220,6 +281,11 @@ export const CourseDetailsView: React.FC = () => {
           <div className="bg-[#e6f7ef] dark:bg-[#064e3b]/40 text-[#059669] dark:text-[#34d399] border border-[#a7f3d0] dark:border-emerald-700/60 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-xs">
             <Check className="w-4 h-4 stroke-[3]" />
             <span>ভর্তি সক্রিয়</span>
+          </div>
+        ) : isPending ? (
+          <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-xs">
+            <Clock className="w-4 h-4" />
+            <span>ভর্তি যাচাইাধীন (Pending)</span>
           </div>
         ) : (
           <button
@@ -675,12 +741,12 @@ export const CourseDetailsView: React.FC = () => {
                 </h3>
               </div>
               <span className="text-xs text-emerald-800 dark:text-emerald-400 font-bold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full">
-                {toBn(course.syllabus.length)}টি মডিউল
+                {toBn((dynamicSyllabus || course.syllabus).length)}টি মডিউল
               </span>
             </div>
 
             <div className="space-y-2.5">
-              {course.syllabus.map((mod, idx) => {
+              {(dynamicSyllabus || course.syllabus).map((mod, idx) => {
                 const isOpen = expandedModule === idx;
                 return (
                   <div key={idx} className="neu-card-sm rounded-2xl overflow-hidden">
@@ -741,7 +807,7 @@ export const CourseDetailsView: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {mockRoutines.map((item) => (
+              {(dynamicRoutines || mockRoutines).map((item) => (
                 <div
                   key={item.id}
                   className="p-3.5 rounded-2xl bg-[#edf2f9] dark:bg-[#142034] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 shadow-2xs"
@@ -798,7 +864,7 @@ export const CourseDetailsView: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              {(mockLeaderboardData.default || []).slice(0, 8).map((entry, rankIdx) => (
+              {(dynamicLeaderboard || mockLeaderboardData.default || []).slice(0, 8).map((entry, rankIdx) => (
                 <div
                   key={entry.id}
                   className={`p-3 rounded-2xl flex items-center justify-between gap-3 ${

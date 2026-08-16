@@ -202,6 +202,7 @@ export interface SubscriptionPlan {
 }
 
 export interface UserProfile {
+  id?: string;
   name: string;
   phone: string;
   email: string;
@@ -223,4 +224,70 @@ export interface UserProfile {
   subscriptionPlanId?: SubscriptionPlanId;
   subscriptionPlanName?: string;
   subscriptionExpiryDate?: string;
+}
+
+export type EnrollmentStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CourseEnrollment {
+  id?: string;
+  userId: string;
+  courseId: string;
+  amount: number;
+  paymentMethod: string;
+  transactionId: string;
+  paymentNumber?: string;
+  status: EnrollmentStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CourseTab {
+  id: string;
+  courseId: string;
+  title: string;
+  tabKey: string;
+  orderIndex: number;
+  isActive?: boolean;
+  content?: string;
+}
+
+export interface CourseRoutine {
+  id: string;
+  courseId: string;
+  day: string;
+  time: string;
+  subject: string;
+  topic: string;
+  instructor: string;
+  batchName: string;
+  liveLink?: string;
+  status: 'live' | 'upcoming' | 'completed';
+}
+
+export interface CourseSyllabusModule {
+  id: string;
+  courseId: string;
+  title: string;
+  moduleOrder: number;
+  classesCount?: number;
+  items?: CourseSyllabusItem[];
+}
+
+export interface CourseSyllabusItem {
+  id: string;
+  moduleId: string;
+  title: string;
+  itemOrder: number;
+}
+
+export interface CourseMaterial {
+  id: string;
+  courseId: string;
+  title: string;
+  subtitle?: string;
+  fileSize?: string;
+  pagesCount?: number;
+  downloadUrl?: string;
+  isFree?: boolean;
+  materialType?: string;
 }

@@ -1,7 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Course, CourseCategory, Exam, ExamResult, MainTab, Notice, RoutineItem, UserProfile } from '../types';
-import { mockCourses, mockExams, mockNotices, mockRoutines } from '../data/mockData';
-import { supabaseService } from '../services/supabaseService';
+import { 
+  Course, 
+  CourseCategory, 
+  Exam, 
+  ExamResult, 
+  MainTab, 
+  Notice, 
+  RoutineItem, 
+  UserProfile, 
+  EnrollmentStatus,
+  CourseEnrollment 
+} from '../types';
+import { mockCourses, mockNotices, mockRoutines } from '../data/mockData';
+import { supabaseService, getCurrentUserId } from '../services/supabaseService';
 import { isSupabaseConfigured, testSupabaseConnection } from '../lib/supabase';
 
 interface AppContextType {
@@ -14,7 +25,9 @@ interface AppContextType {
   notices: Notice[];
   routines: RoutineItem[];
   enrolledCourseIds: string[];
-  enrollInCourse: (courseId: string, paymentMethod?: string) => void;
+  pendingEnrollmentIds: string[];
+  userEnrollments: Record<string, EnrollmentStatus>;
+  enrollInCourse: (courseId: string, paymentMethod?: string, trxId?: string, amount?: number) => Promise<void>;
   selectedCourseDetails: Course | null;
   setSelectedCourseDetails: (course: Course | null) => void;
   checkoutCourse: Course | null;
@@ -59,10 +72,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
   
-  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('tamreen_enrolled');
-    return saved ? JSON.parse(saved) : ['course-1'];
+  // Track user enrollments dictionary: { [courseId]: 'pending' | 'approved' | 'rejected' }
+  const [userEnrollments, setUserEnrollments] = useState<Record<string, EnrollmentStatus>>(() => {
+    const saved = localStorage.getItem('tamreen_user_enrollments');
+    return saved ? JSON.parse(saved) : {};
   });
+
+  const enrolledCourseIds = Object.keys(userEnrollments).filter(
+    (id) => userEnrollments[id] === 'approved'
+  );
+
+  const pendingEnrollmentIds = Object.keys(userEnrollments).filter(
+    (id) => userEnrollments[id] === 'pending'
+  );
 
   const [activeExam, setActiveExam] = useState<Exam | null>(null);
   const [examResults, setExamResults] = useState<ExamResult[]>(() => {
@@ -77,41 +99,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isRoutineOpen, setIsRoutineOpen] = useState(false);
 
-  const refreshFromDatabase = async () => {
-    setIsLoadingData(true);
-    try {
-      const [remoteExams, remoteCourses, remoteNotices] = await Promise.all([
-        supabaseService.getExams(),
-        supabaseService.getCourses(),
-        supabaseService.getNotices()
-      ]);
-
-      setExams(remoteExams);
-      if (remoteCourses && remoteCourses.length > 0) setCourses(remoteCourses);
-      if (remoteNotices && remoteNotices.length > 0) setNotices(remoteNotices);
-
-      const connCheck = await testSupabaseConnection();
-      setIsSupabaseConnected(connCheck.success);
-    } catch (err) {
-      console.warn('Error refreshing data from database:', err);
-    } finally {
-      setIsLoadingData(false);
-    }
-  };
-
-  // Load from Supabase on mount
-  useEffect(() => {
-    refreshFromDatabase();
-  }, []);
-
-  const handleSetActiveTab = (tab: MainTab) => {
-    setViewingResult(null);
-    setSelectedCourseDetails(null);
-    setCheckoutCourse(null);
-    setIsNotificationOpen(false);
-    setIsRoutineOpen(false);
-    setActiveTab(tab);
-  };
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState<string[]>(() => {
     const saved = localStorage.getItem('tamreen_bookmarks');
@@ -157,14 +144,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 3500);
   };
 
-  const enrollInCourse = (courseId: string, paymentMethod?: string) => {
-    if (!enrolledCourseIds.includes(courseId)) {
-      const updated = [...enrolledCourseIds, courseId];
-      setEnrolledCourseIds(updated);
-      localStorage.setItem('tamreen_enrolled', JSON.stringify(updated));
-      showToast(`অভিনন্দন! ${paymentMethod ? `${paymentMethod} পেমেন্টের মাধ্যমে ` : ''}কোর্সটিতে সফলভাবে ভর্তি সম্পন্ন হয়েছে।`);
-    } else {
+  const refreshFromDatabase = async () => {
+    setIsLoadingData(true);
+    try {
+      const userId = await getCurrentUserId();
+      const [remoteExams, remoteCourses, remoteNotices, remoteEnrollments, remoteProfile, remoteResults] = await Promise.all([
+        supabaseService.getExams(),
+        supabaseService.getCourses(),
+        supabaseService.getNotices(),
+        supabaseService.getUserEnrollments(userId),
+        supabaseService.getProfile(userId),
+        supabaseService.getExamResults(userId)
+      ]);
+
+      setExams(remoteExams);
+      if (remoteCourses && remoteCourses.length > 0) {
+        setCourses(remoteCourses);
+      }
+      if (remoteNotices && remoteNotices.length > 0) {
+        setNotices(remoteNotices);
+      }
+
+      if (remoteEnrollments && remoteEnrollments.length > 0) {
+        const enrollMap: Record<string, EnrollmentStatus> = {};
+        remoteEnrollments.forEach((e: CourseEnrollment) => {
+          enrollMap[e.courseId] = e.status;
+        });
+        setUserEnrollments((prev) => {
+          const merged = { ...prev, ...enrollMap };
+          localStorage.setItem('tamreen_user_enrollments', JSON.stringify(merged));
+          return merged;
+        });
+      }
+
+      if (remoteProfile) {
+        setUserProfile((prev) => {
+          const merged = { ...prev, ...remoteProfile };
+          localStorage.setItem('tamreen_user_profile', JSON.stringify(merged));
+          return merged;
+        });
+      }
+
+      if (remoteResults && remoteResults.length > 0) {
+        setExamResults(remoteResults);
+        localStorage.setItem('tamreen_results', JSON.stringify(remoteResults));
+      }
+
+      const connCheck = await testSupabaseConnection();
+      setIsSupabaseConnected(connCheck.success);
+    } catch (err) {
+      console.warn('Error refreshing data from database:', err);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    refreshFromDatabase();
+  }, []);
+
+  const handleSetActiveTab = (tab: MainTab) => {
+    setViewingResult(null);
+    setSelectedCourseDetails(null);
+    setCheckoutCourse(null);
+    setIsNotificationOpen(false);
+    setIsRoutineOpen(false);
+    setActiveTab(tab);
+  };
+
+  const enrollInCourse = async (
+    courseId: string, 
+    paymentMethod: string = 'bKash', 
+    trxId: string = `TRX${Date.now().toString().slice(-6)}`,
+    amount: number = 0
+  ) => {
+    const currentStatus = userEnrollments[courseId];
+    if (currentStatus === 'approved') {
       showToast('আপনি ইতোমধ্যে এই কোর্সে ভর্তি আছেন', 'info');
+      return;
+    }
+    if (currentStatus === 'pending') {
+      showToast('আপনার আবেদনটি ইতোমধ্যে যাচাইাধীন রয়েছে। শীঘ্রই সক্রিয় হবে।', 'info');
+      return;
+    }
+
+    try {
+      const userId = await getCurrentUserId();
+      const res = await supabaseService.submitCourseEnrollment({
+        userId,
+        courseId,
+        amount,
+        paymentMethod,
+        transactionId: trxId,
+        paymentNumber: userProfile.phone
+      });
+
+      const updatedEnrollments = {
+        ...userEnrollments,
+        [courseId]: 'pending' as EnrollmentStatus
+      };
+      setUserEnrollments(updatedEnrollments);
+      localStorage.setItem('tamreen_user_enrollments', JSON.stringify(updatedEnrollments));
+
+      showToast(res.message || 'আপনার ভর্তি আবেদন সফলভাবে জমা হয়েছে। Admin অনুমোদনের পর কোর্সটি চালু হবে।', 'success');
+    } catch {
+      const updatedEnrollments = {
+        ...userEnrollments,
+        [courseId]: 'pending' as EnrollmentStatus
+      };
+      setUserEnrollments(updatedEnrollments);
+      localStorage.setItem('tamreen_user_enrollments', JSON.stringify(updatedEnrollments));
+      showToast('আপনার ভর্তি আবেদন সফলভাবে জমা হয়েছে। Admin অনুমোদনের পর কোর্সটি চালু হবে।', 'success');
     }
   };
 
@@ -176,15 +267,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveExam(null);
   };
 
-  const saveExamResult = (result: ExamResult) => {
+  const saveExamResult = async (result: ExamResult) => {
     const newResults = [result, ...examResults];
     setExamResults(newResults);
     localStorage.setItem('tamreen_results', JSON.stringify(newResults));
     setViewingResult(result);
     showToast('পরীক্ষা সফলভাবে সম্পন্ন হয়েছে!', 'success');
 
-    // Asynchronously submit result to Supabase for central leaderboard
-    supabaseService.submitExamResult(result, userProfile).catch(() => {});
+    // Submit to Supabase
+    try {
+      const userId = await getCurrentUserId();
+      await supabaseService.submitExamResult({
+        userId,
+        examId: result.examId,
+        examTitle: result.examTitle,
+        score: result.score,
+        totalMarks: result.totalMarks,
+        correctAnswers: result.correctAnswers,
+        wrongAnswers: result.wrongAnswers,
+        skippedAnswers: result.skippedAnswers,
+        timeSpentSeconds: result.timeSpentSeconds,
+        userAnswers: result.userAnswers
+      });
+    } catch {
+      // Background submit
+    }
   };
 
   const toggleBookmark = (questionId: string) => {
@@ -199,13 +306,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const updateUserProfile = (profileUpdate: Partial<UserProfile>) => {
-    setUserProfile((prev) => {
-      const updated = { ...prev, ...profileUpdate };
-      localStorage.setItem('tamreen_user_profile', JSON.stringify(updated));
-      return updated;
-    });
+  const updateUserProfile = async (profileUpdate: Partial<UserProfile>) => {
+    const updated = { ...userProfile, ...profileUpdate };
+    setUserProfile(updated);
+    localStorage.setItem('tamreen_user_profile', JSON.stringify(updated));
     showToast('প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে');
+
+    try {
+      const userId = await getCurrentUserId();
+      await supabaseService.updateProfile(userId, profileUpdate);
+    } catch {
+      // Local state is already updated
+    }
   };
 
   const subscribeToPackage = (
@@ -233,18 +345,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUserProfile(updatedProfile);
     localStorage.setItem('tamreen_user_profile', JSON.stringify(updatedProfile));
     showToast(`অভিনন্দন! আপনার ${planName} সাবস্ক্রিপশন সফলভাবে সক্রিয় হয়েছে।`, 'success');
-
-    // Send payment request to Supabase admin panel
-    if (paymentDetails) {
-      supabaseService.submitPayment({
-        userPhone: paymentDetails.phone || userProfile.phone,
-        userName: userProfile.name,
-        gateway: paymentDetails.gateway,
-        trxId: paymentDetails.trxId,
-        planName: planName,
-        amount: planId === 'monthly' ? 199 : planId === 'quarterly' ? 499 : planId === 'half_yearly' ? 899 : 1499
-      }).catch(() => {});
-    }
   };
 
   const isPremiumMember = Boolean(userProfile.isPremium || userProfile.subscriptionPlanId);
@@ -261,6 +361,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notices,
         routines,
         enrolledCourseIds,
+        pendingEnrollmentIds,
+        userEnrollments,
         enrollInCourse,
         selectedCourseDetails,
         setSelectedCourseDetails,

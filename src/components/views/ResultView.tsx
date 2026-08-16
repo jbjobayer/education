@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useFont } from '../../context/FontContext';
 import { 
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { mockExams } from '../../data/mockData';
-import { LeaderboardEntry } from '../../types';
+import { LeaderboardEntry, Question } from '../../types';
 import { generateExamLeaderboard } from '../../utils/leaderboardUtils';
 import { 
   getUnifiedQuestionText, 
@@ -29,6 +29,7 @@ import {
   getOptionsConfig,
   parseQuestionData 
 } from '../../utils/questionUtils';
+import { supabaseService } from '../../services/supabaseService';
 
 export const ResultView: React.FC = () => {
   const { 
@@ -45,13 +46,29 @@ export const ResultView: React.FC = () => {
 
   const [aiExplanations, setAiExplanations] = useState<Record<string, { loading: boolean; text?: string }>>({});
   const [copiedLink, setCopiedLink] = useState(false);
+  const [dynamicQuestions, setDynamicQuestions] = useState<Question[]>([]);
+
+  useEffect(() => {
+    if (viewingResult?.examId) {
+      supabaseService.getExamQuestions(viewingResult.examId).then((qs) => {
+        if (qs && qs.length > 0) {
+          setDynamicQuestions(qs);
+        }
+      }).catch(() => {});
+    }
+  }, [viewingResult?.examId]);
 
   if (!viewingResult) return null;
 
   // Find or reconstruct the exact target exam matching viewingResult.examId and totalMarks
   const exam = useMemo(() => {
     const found = mockExams.find((e) => e.id === viewingResult.examId);
-    if (found) return found;
+    if (found) {
+      return {
+        ...found,
+        questions: dynamicQuestions.length > 0 ? dynamicQuestions : found.questions
+      };
+    }
 
     const totalQ = (viewingResult.correctAnswers + viewingResult.wrongAnswers + (viewingResult.skippedAnswers || 0)) || viewingResult.totalMarks || 20;
     const totalM = viewingResult.totalMarks || totalQ;
@@ -67,9 +84,9 @@ export const ResultView: React.FC = () => {
       totalQuestions: totalQ,
       status: 'running' as const,
       participantsCount: 1250,
-      questions: []
+      questions: dynamicQuestions
     };
-  }, [viewingResult]);
+  }, [viewingResult, dynamicQuestions]);
 
   const percentage = Math.round((viewingResult.score / (viewingResult.totalMarks || 1)) * 100);
   const isPassed = percentage >= 40;
