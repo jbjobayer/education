@@ -68,7 +68,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [exams, setExams] = useState<Exam[]>([]);
   const [notices, setNotices] = useState<Notice[]>(mockNotices);
-  const [routines] = useState<RoutineItem[]>(mockRoutines);
+  const [routines, setRoutines] = useState<RoutineItem[]>(mockRoutines);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
   
@@ -148,13 +148,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoadingData(true);
     try {
       const userId = await getCurrentUserId();
-      const [remoteExams, remoteCourses, remoteNotices, remoteEnrollments, remoteProfile, remoteResults] = await Promise.all([
+      const [remoteExams, remoteCourses, remoteNotices, remoteEnrollments, remoteProfile, remoteResults, remoteRoutines] = await Promise.all([
         supabaseService.getExams(),
         supabaseService.getCourses(),
         supabaseService.getNotices(),
         supabaseService.getUserEnrollments(userId),
         supabaseService.getProfile(userId),
-        supabaseService.getExamResults(userId)
+        supabaseService.getExamResults(userId),
+        supabaseService.getCourseRoutines()
       ]);
 
       setExams(remoteExams);
@@ -163,6 +164,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (remoteNotices && remoteNotices.length > 0) {
         setNotices(remoteNotices);
+      }
+      if (remoteRoutines && remoteRoutines.length > 0) {
+        setRoutines(remoteRoutines);
       }
 
       if (remoteEnrollments && remoteEnrollments.length > 0) {

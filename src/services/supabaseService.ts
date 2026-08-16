@@ -229,18 +229,18 @@ export const supabaseService = {
   },
 
   /**
-   * Fetch Course Routines
+   * Fetch Course Routines (by optional courseId or all)
    */
-  async getCourseRoutines(courseId: string): Promise<RoutineItem[]> {
+  async getCourseRoutines(courseId?: string): Promise<RoutineItem[]> {
     const supabase = getSupabase();
-    if (!supabase || !courseId) return [];
+    if (!supabase) return [];
 
     try {
-      const { data, error } = await supabase
-        .from('course_routines')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('created_at', { ascending: true });
+      let query = supabase.from('course_routines').select('*');
+      if (courseId) {
+        query = query.eq('course_id', courseId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error || !data) return [];
 
@@ -775,7 +775,7 @@ export const supabaseService = {
   // ==========================================
 
   /**
-   * Fetch Course / Exam Leaderboard from 'course_leaderboard' view
+   * Fetch Course / Exam Leaderboard from 'course_leaderboard' view or table
    */
   async getLeaderboard(courseOrExamId?: string): Promise<LeaderboardEntry[]> {
     const supabase = getSupabase();
@@ -784,7 +784,7 @@ export const supabaseService = {
     try {
       let query = supabase.from('course_leaderboard').select('*');
       if (courseOrExamId) {
-        query = query.or(`course_id.eq.${courseOrExamId},exam_id.eq.${courseOrExamId}`);
+        query = query.eq('course_id', courseOrExamId);
       }
       const { data, error } = await query.order('rank', { ascending: true }).limit(50);
       
@@ -803,12 +803,12 @@ export const supabaseService = {
         }));
       }
 
-      // Fallback query to exam_results if view is empty
-      const { data: resultsData } = await supabase
-        .from('exam_results')
-        .select('*')
-        .order('score', { ascending: false })
-        .limit(50);
+      // Fallback query to exam_results if view is empty or filtered
+      let resultsQuery = supabase.from('exam_results').select('*');
+      if (courseOrExamId) {
+        resultsQuery = resultsQuery.or(`exam_id.eq.${courseOrExamId},course_id.eq.${courseOrExamId}`);
+      }
+      const { data: resultsData } = await resultsQuery.order('score', { ascending: false }).limit(50);
 
       if (resultsData && resultsData.length > 0) {
         return resultsData.map((r: any, idx: number) => ({
