@@ -45,45 +45,107 @@ export const getCurrentUserId = async (): Promise<string> => {
 
 /**
  * Map database question row to unified UI Question interface
- * Note: Keeps Arabic/Bangla RTL typography formatting safe
+ * Supports all common admin/Supabase schemas and column naming conventions.
  */
 const mapQuestionRow = (item: any): Question => {
-  let options: string[] = [];
-  if (Array.isArray(item.options)) {
-    options = item.options;
-  } else if (item.option_a !== undefined || item.option_b !== undefined) {
-    options = [
-      item.option_a || '',
-      item.option_b || '',
-      item.option_c || '',
-      item.option_d || ''
-    ].filter(Boolean);
+  if (!item) {
+    return {
+      id: `q_${Math.random()}`,
+      question: '',
+      options: ['ক', 'খ', 'গ', 'ঘ'],
+      correctIndex: 0,
+      explanation: '',
+      subject: ''
+    };
   }
 
+  // 1. Question text & Arabic text
+  let questionText = item.question_text || item.question || item.title || item.text || item.question_bn || item.question_title || item.body || item.prompt || '';
+  let arabicQuestion = item.arabic_question || item.arabic_text || item.arabicQuestion || item.arabicText || undefined;
+
+  // If questionText is in Arabic and no arabicQuestion is set, set arabicQuestion
+  if (!arabicQuestion && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(questionText)) {
+    // If text has arabic, arabicQuestion will be handled by questionUtils parser
+  }
+
+  // 2. Extract options
+  let options: string[] = [];
+  if (Array.isArray(item.options)) {
+    options = item.options.map((o: any) => String(o).trim()).filter(Boolean);
+  } else if (typeof item.options === 'string' && item.options.trim()) {
+    try {
+      const parsed = JSON.parse(item.options);
+      if (Array.isArray(parsed)) {
+        options = parsed.map((o: any) => String(o).trim()).filter(Boolean);
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        options = Object.values(parsed).map((o: any) => String(o).trim()).filter(Boolean);
+      }
+    } catch {
+      if (item.options.includes('\n')) {
+        options = item.options.split('\n').map((s: string) => s.trim()).filter(Boolean);
+      } else if (item.options.includes(',')) {
+        options = item.options.split(',').map((s: string) => s.trim()).filter(Boolean);
+      } else {
+        options = [item.options.trim()];
+      }
+    }
+  } else if (typeof item.options === 'object' && item.options !== null) {
+    options = Object.values(item.options).map((o: any) => String(o).trim()).filter(Boolean);
+  }
+
+  // If options array is empty, check discrete column names
+  if (options.length === 0) {
+    const optA = item.option_a ?? item.optionA ?? item.option_1 ?? item.option1 ?? item.opt1 ?? item.opt_a ?? item.op1 ?? item.a;
+    const optB = item.option_b ?? item.optionB ?? item.option_2 ?? item.option2 ?? item.opt2 ?? item.opt_b ?? item.op2 ?? item.b;
+    const optC = item.option_c ?? item.optionC ?? item.option_3 ?? item.option3 ?? item.opt3 ?? item.opt_c ?? item.op3 ?? item.c;
+    const optD = item.option_d ?? item.optionD ?? item.option_4 ?? item.option4 ?? item.opt4 ?? item.opt_d ?? item.op4 ?? item.d;
+
+    const list = [optA, optB, optC, optD].filter(v => v !== undefined && v !== null && String(v).trim() !== '');
+    if (list.length > 0) {
+      options = list.map(v => String(v).trim());
+    }
+  }
+
+  // 3. Extract correct index
   let correctIndex = 0;
-  if (typeof item.correct_index === 'number') {
-    correctIndex = item.correct_index;
-  } else if (typeof item.correct_option === 'number') {
-    correctIndex = item.correct_option;
-  } else if (typeof item.correct_option === 'string') {
-    const lower = item.correct_option.trim().toLowerCase();
-    if (lower === 'a' || lower === '0' || lower === '1') correctIndex = 0;
-    else if (lower === 'b' || lower === '2') correctIndex = 1;
-    else if (lower === 'c' || lower === '3') correctIndex = 2;
-    else if (lower === 'd' || lower === '4') correctIndex = 3;
-    else {
-      const parsed = parseInt(item.correct_option, 10);
-      if (!isNaN(parsed) && parsed >= 0) correctIndex = parsed;
+  const rawCorrect = item.correct_index ?? item.correct_option ?? item.correct_answer ?? item.correctOption ?? item.correctIndex ?? item.correctAnswer ?? item.answer ?? item.ans ?? item.right_answer ?? item.correct;
+
+  if (typeof rawCorrect === 'number') {
+    if (rawCorrect >= 1 && rawCorrect <= 4 && (item.correct_index === undefined || rawCorrect > (options.length > 0 ? options.length - 1 : 3))) {
+      correctIndex = rawCorrect - 1;
+    } else {
+      correctIndex = rawCorrect;
+    }
+  } else if (typeof rawCorrect === 'string') {
+    const trimmed = rawCorrect.trim().toLowerCase();
+    if (trimmed === 'a' || trimmed === '1' || trimmed === 'ক' || trimmed === 'أ' || trimmed === '১' || trimmed === 'option_a' || trimmed === 'option1') {
+      correctIndex = 0;
+    } else if (trimmed === 'b' || trimmed === '2' || trimmed === 'খ' || trimmed === 'ب' || trimmed === '২' || trimmed === 'option_b' || trimmed === 'option2') {
+      correctIndex = 1;
+    } else if (trimmed === 'c' || trimmed === '3' || trimmed === 'গ' || trimmed === 'ج' || trimmed === '৩' || trimmed === 'option_c' || trimmed === 'option3') {
+      correctIndex = 2;
+    } else if (trimmed === 'd' || trimmed === '4' || trimmed === 'ঘ' || trimmed === 'د' || trimmed === '৪' || trimmed === 'option_d' || trimmed === 'option4') {
+      correctIndex = 3;
+    } else if (options.length > 0) {
+      const idx = options.findIndex(opt => opt.trim().toLowerCase() === trimmed);
+      if (idx !== -1) {
+        correctIndex = idx;
+      } else {
+        const parsed = parseInt(trimmed, 10);
+        if (!isNaN(parsed) && parsed >= 0) {
+          correctIndex = parsed >= 1 && parsed <= options.length ? parsed - 1 : parsed;
+        }
+      }
     }
   }
 
   return {
-    id: String(item.id),
-    question: item.question_text || item.question || '',
-    arabicQuestion: item.arabic_question || undefined,
+    id: String(item.id || `q_${Math.random().toString(36).substring(2, 9)}`),
+    question: questionText || 'প্রশ্ন বিবরণ',
+    arabicQuestion: arabicQuestion,
     options: options.length > 0 ? options : ['ক', 'খ', 'গ', 'ঘ'],
-    correctIndex,
-    explanation: item.explanation || '',
+    correctIndex: correctIndex >= 0 && correctIndex < (options.length || 4) ? correctIndex : 0,
+    explanation: item.explanation || item.explain || item.solution || item.details || item.explanation_text || item.note || '',
     subject: item.subject || ''
   };
 };
@@ -392,42 +454,90 @@ export const supabaseService = {
   // ==========================================
 
   /**
-   * Fetch all Exams
+   * Fetch all Exams with full questions populated
    */
   async getExams(): Promise<Exam[]> {
     const supabase = getSupabase();
     if (!supabase) return [];
 
     try {
-      const { data, error } = await supabase
+      // 1. Fetch exams table
+      let { data, error } = await supabase
         .from('exams')
         .select('*')
         .order('created_at', { ascending: false });
 
+      // Fallback if created_at column doesn't exist
       if (error) {
-        console.warn('Supabase fetch exams error:', error.message);
+        const fallback = await supabase.from('exams').select('*');
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (error || !data || data.length === 0) {
         return [];
       }
 
-      if (data && data.length > 0) {
-        return data.map((item: any) => ({
-          id: String(item.id),
+      // 2. Fetch all questions from questions table at once to link efficiently
+      let allQuestionsData: any[] = [];
+      try {
+        const { data: qData, error: qError } = await supabase
+          .from('questions')
+          .select('*');
+        if (!qError && qData) {
+          allQuestionsData = qData;
+        }
+      } catch (err) {
+        console.warn('Could not batch load questions:', err);
+      }
+
+      return data.map((item: any) => {
+        const examIdStr = String(item.id);
+
+        // Check embedded questions in exam row first
+        let questions: Question[] = [];
+        let embedded = item.questions || item.question_list || item.data || item.quiz_questions;
+        if (typeof embedded === 'string' && embedded.trim()) {
+          try {
+            embedded = JSON.parse(embedded);
+          } catch {}
+        }
+        if (Array.isArray(embedded) && embedded.length > 0) {
+          questions = embedded.map(mapQuestionRow);
+        }
+
+        // If no embedded questions, match from questions table
+        if (questions.length === 0 && allQuestionsData.length > 0) {
+          const matched = allQuestionsData.filter((q: any) => 
+            String(q.exam_id) === examIdStr || 
+            String(q.examId) === examIdStr ||
+            String(q.exam_ref_id) === examIdStr
+          );
+          if (matched.length > 0) {
+            questions = matched.map(mapQuestionRow);
+          }
+        }
+
+        const totalQCount = questions.length > 0 
+          ? questions.length 
+          : Number(item.total_questions || item.totalQuestions || 20);
+
+        return {
+          id: examIdStr,
           title: item.title || 'অনলাইন পরীক্ষা',
           category: item.category || 'model_test',
           subject: item.subject || 'সাধারণ বিষয়',
           totalMarks: Number(item.total_marks || item.totalMarks || 100),
           durationMinutes: Number(item.duration_minutes || item.durationMinutes || 60),
           negativeMarking: Number(item.negative_marking ?? item.negativeMarking ?? 0.25),
-          totalQuestions: Number(item.total_questions || item.totalQuestions || 20),
+          totalQuestions: totalQCount,
           status: item.status || 'running',
           participantsCount: Number(item.participants_count || 0),
-          questions: Array.isArray(item.questions) ? item.questions.map(mapQuestionRow) : [],
+          questions: questions,
           isFree: item.is_free !== undefined && item.is_free !== null ? Boolean(item.is_free) : true,
           dateStr: item.date_str || item.dateStr || 'চলমান'
-        }));
-      }
-
-      return [];
+        };
+      });
     } catch (e) {
       console.warn('Exception in getExams:', e);
       return [];
@@ -435,24 +545,69 @@ export const supabaseService = {
   },
 
   /**
-   * Fetch questions for an exam from 'questions' table
+   * Fetch questions for an exam from 'questions' table or 'exams' table
    */
   async getExamQuestions(examId: string): Promise<Question[]> {
     const supabase = getSupabase();
     if (!supabase || !examId) return [];
 
     try {
-      const { data, error } = await supabase
+      const examIdStr = String(examId);
+
+      // 1. Try querying 'questions' table with exam_id
+      let { data, error } = await supabase
         .from('questions')
         .select('*')
-        .eq('exam_id', examId)
-        .order('created_at', { ascending: true });
+        .eq('exam_id', examIdStr);
 
+      // If no data or error, try without strict type or with examId column
       if (error || !data || data.length === 0) {
-        return [];
+        const alt = await supabase
+          .from('questions')
+          .select('*')
+          .eq('examId', examIdStr);
+        if (!alt.error && alt.data && alt.data.length > 0) {
+          data = alt.data;
+          error = null;
+        }
       }
 
-      return data.map(mapQuestionRow);
+      // If still no data, try matching numeric or uuid
+      if ((error || !data || data.length === 0) && !isNaN(Number(examId))) {
+        const numRes = await supabase
+          .from('questions')
+          .select('*')
+          .eq('exam_id', Number(examId));
+        if (!numRes.error && numRes.data && numRes.data.length > 0) {
+          data = numRes.data;
+          error = null;
+        }
+      }
+
+      if (!error && data && data.length > 0) {
+        return data.map(mapQuestionRow);
+      }
+
+      // 2. Check if questions are stored as JSON in the exam row
+      const { data: examRow } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('id', examId)
+        .maybeSingle();
+
+      if (examRow) {
+        let embedded = examRow.questions || examRow.question_list || examRow.data || examRow.quiz_questions;
+        if (typeof embedded === 'string' && embedded.trim()) {
+          try {
+            embedded = JSON.parse(embedded);
+          } catch {}
+        }
+        if (Array.isArray(embedded) && embedded.length > 0) {
+          return embedded.map(mapQuestionRow);
+        }
+      }
+
+      return [];
     } catch (err) {
       console.warn('Error fetching exam questions:', err);
       return [];

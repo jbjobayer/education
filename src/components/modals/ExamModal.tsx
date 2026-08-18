@@ -217,6 +217,51 @@ export const ExamModal: React.FC = () => {
             <Loader2 className="w-8 h-8 text-[#005a36] animate-spin" />
             <p className="text-sm font-bold text-slate-600 dark:text-slate-400">প্রশ্নপত্র লোড হচ্ছে...</p>
           </div>
+        ) : questionsList.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 text-center space-y-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <div className="space-y-1.5 max-w-md mx-auto">
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
+                এই পরীক্ষায় এখনও কোনো প্রশ্ন পাওয়া যায়নি
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Supabase ডাটাবেজের <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-emerald-700 dark:text-emerald-400">questions</code> টেবিলে এই পরীক্ষার জন্য প্রশ্ন যুক্ত করুন।
+              </p>
+              <div className="pt-2 text-[11px] font-mono bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                exam_id: <span className="font-bold text-emerald-600 dark:text-emerald-400">{activeExam.id}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsLoadingQuestions(true);
+                  const qs = await supabaseService.getExamQuestions(activeExam.id);
+                  setLoadedQuestions(qs);
+                  setIsLoadingQuestions(false);
+                  if (qs.length > 0) {
+                    showToast(`${qs.length}টি প্রশ্ন লোড হয়েছে`, 'success');
+                  } else {
+                    showToast('এখনও প্রশ্ন পাওয়া যায়নি। টেবিলে রো যুক্ত করা হয়েছে কিনা দেখুন।', 'info');
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#004d2e] hover:bg-[#003d24] text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Loader2 className={`w-3.5 h-3.5 ${isLoadingQuestions ? 'animate-spin' : ''}`} />
+                <span>পুনরায় রিফ্রেশ করুন</span>
+              </button>
+              <button
+                type="button"
+                onClick={closeExam}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 transition-all cursor-pointer"
+              >
+                ফিরে যান
+              </button>
+            </div>
+          </div>
         ) : (
           questionsList.map((question, qIndex) => {
           const selectedOption = answers[question.id];
@@ -353,18 +398,20 @@ export const ExamModal: React.FC = () => {
         }))}
 
         {/* Bottom Submit Action Plate */}
-        <div className="pt-4 text-center">
-          <button
-            onClick={() => setShowSubmitConfirm(true)}
-            className="w-full max-w-sm mx-auto py-3.5 rounded-2xl bg-[#004d2e] hover:bg-[#003d24] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98"
-          >
-            <CheckCircle2 className="w-5 h-5 text-amber-300" />
-            <span>পরীক্ষা সম্পূর্ণ করুন ও জমা দিন</span>
-          </button>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-            সর্বমোট {answeredCount}টি প্রশ্নের উত্তর নির্বাচন করেছেন
-          </p>
-        </div>
+        {questionsList.length > 0 && (
+          <div className="pt-4 text-center">
+            <button
+              onClick={() => setShowSubmitConfirm(true)}
+              className="w-full max-w-sm mx-auto py-3.5 rounded-2xl bg-[#004d2e] hover:bg-[#003d24] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98"
+            >
+              <CheckCircle2 className="w-5 h-5 text-amber-300" />
+              <span>পরীক্ষা সম্পূর্ণ করুন ও জমা দিন</span>
+            </button>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+              সর্বমোট {answeredCount}টি প্রশ্নের উত্তর নির্বাচন করেছেন
+            </p>
+          </div>
+        )}
       </main>
 
       {/* 3. Exit Confirmation Modal (Matching Screenshot 6) */}
