@@ -59,7 +59,14 @@ import { useFont, BanglaFont, ArabicFont } from '../../context/FontContext';
 import { getUnifiedQuestionText, getTextDirection, parseQuestionData, getOptionsConfig } from '../../utils/questionUtils';
 import { Exam, ExamResult, LeaderboardEntry } from '../../types';
 import { generateExamLeaderboard } from '../../utils/leaderboardUtils';
-import { getSupabaseConfig, saveSupabaseConfig, testSupabaseConnection, isSupabaseConfigured } from '../../lib/supabase';
+import { 
+  getSupabaseConfig, 
+  saveSupabaseConfig, 
+  testSupabaseConnection, 
+  isSupabaseConfigured,
+  cleanSupabaseUrl,
+  cleanSupabaseKey
+} from '../../lib/supabase';
 
 type ProfileSection = 
   | 'menu' 
@@ -1393,7 +1400,7 @@ export const ProfileView: React.FC = () => {
                   <input
                     type="url"
                     value={supabaseUrlInput}
-                    onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                    onChange={(e) => setSupabaseUrlInput(cleanSupabaseUrl(e.target.value))}
                     placeholder="https://your-project.supabase.co"
                     className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono focus:outline-emerald-600"
                   />
@@ -1406,7 +1413,7 @@ export const ProfileView: React.FC = () => {
                   <input
                     type="password"
                     value={supabaseKeyInput}
-                    onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                    onChange={(e) => setSupabaseKeyInput(cleanSupabaseKey(e.target.value))}
                     placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                     className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono focus:outline-emerald-600"
                   />
@@ -1427,7 +1434,11 @@ export const ProfileView: React.FC = () => {
                   <button
                     type="button"
                     onClick={async () => {
-                      saveSupabaseConfig(supabaseUrlInput, supabaseKeyInput);
+                      const cleanedUrl = cleanSupabaseUrl(supabaseUrlInput);
+                      const cleanedKey = cleanSupabaseKey(supabaseKeyInput);
+                      setSupabaseUrlInput(cleanedUrl);
+                      setSupabaseKeyInput(cleanedKey);
+                      saveSupabaseConfig(cleanedUrl, cleanedKey);
                       setIsTestingDb(true);
                       setDbTestResult(null);
                       const res = await testSupabaseConnection();
