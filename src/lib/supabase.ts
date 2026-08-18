@@ -68,8 +68,8 @@ export const testSupabaseConnection = async (): Promise<{ success: boolean; mess
   }
 
   try {
-    // Attempt a lightweight ping query
-    const { error } = await client.from('app_settings').select('key').limit(1);
+    // Attempt a lightweight ping query on courses or exams table
+    const { error } = await client.from('courses').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       // If table doesn't exist yet, we still connected to Supabase
       if (error.message?.includes('relation') || error.message?.includes('does not exist')) {

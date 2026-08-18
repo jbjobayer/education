@@ -23,7 +23,7 @@ import {
 import { Exam } from '../../types';
 
 export const ExamsView: React.FC = () => {
-  const { exams, startExam, examResults, setViewingResult, setResultSubTab, refreshFromDatabase, isLoadingData } = useApp();
+  const { exams, startExam, examResults, setViewingResult, setResultSubTab, refreshFromDatabase, isLoadingData, showToast } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'free'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
@@ -126,15 +126,18 @@ export const ExamsView: React.FC = () => {
           </div>
 
           <button
-            onClick={() => {
+            onClick={async () => {
               setSearchQuery('');
               setActiveFilter('all');
               setSelectedSubject('all');
+              await refreshFromDatabase();
+              showToast('পরীক্ষা তালিকা আপডেট করা হয়েছে');
             }}
-            className="bg-[#02331f]/90 hover:bg-[#03442a] border border-emerald-600/40 text-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+            disabled={isLoadingData}
+            className="bg-[#02331f]/90 hover:bg-[#03442a] border border-emerald-600/40 text-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-emerald-300" />
-            <span>রিফ্রেশ</span>
+            <RotateCcw className={`w-3.5 h-3.5 text-emerald-300 ${isLoadingData ? 'animate-spin' : ''}`} />
+            <span>{isLoadingData ? 'লোড হচ্ছে...' : 'রিফ্রেশ'}</span>
           </button>
         </div>
       </div>

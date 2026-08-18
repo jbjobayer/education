@@ -13,7 +13,7 @@ import {
 } from '../types';
 import { mockCourses, mockNotices, mockRoutines } from '../data/mockData';
 import { supabaseService, getCurrentUserId } from '../services/supabaseService';
-import { isSupabaseConfigured, testSupabaseConnection } from '../lib/supabase';
+import { isSupabaseConfigured, testSupabaseConnection, getSupabase } from '../lib/supabase';
 
 interface AppContextType {
   activeTab: MainTab;
@@ -203,10 +203,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Load from Supabase on mount
+  // Load from Supabase on mount & listen to real-time changes
   useEffect(() => {
     refreshFromDatabase();
-  }, []);
+
+    const client = getSupabase();
+    if (client) {
+      const channel = client
+        .channel('public:db-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'exams' }, () => {
+          refreshFromDatabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => {
+          refreshFromDatabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'course_routines' }, () => {
+          refreshFromDatabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'course_enrollments' }, () => {
+          refreshFromDatabase();
+        })
+        .subscribe();
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    }
+  }, [isSupabaseConnected]);
 
   const handleSetActiveTab = (tab: MainTab) => {
     setViewingResult(null);

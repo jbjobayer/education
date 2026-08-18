@@ -412,7 +412,7 @@ export const supabaseService = {
       if (data && data.length > 0) {
         return data.map((item: any) => ({
           id: String(item.id),
-          title: item.title,
+          title: item.title || 'অনলাইন পরীক্ষা',
           category: item.category || 'model_test',
           subject: item.subject || 'সাধারণ বিষয়',
           totalMarks: Number(item.total_marks || item.totalMarks || 100),
@@ -422,8 +422,8 @@ export const supabaseService = {
           status: item.status || 'running',
           participantsCount: Number(item.participants_count || 0),
           questions: Array.isArray(item.questions) ? item.questions.map(mapQuestionRow) : [],
-          isFree: Boolean(item.is_free ?? item.isFree ?? false),
-          dateStr: item.date_str || item.dateStr
+          isFree: item.is_free !== undefined && item.is_free !== null ? Boolean(item.is_free) : true,
+          dateStr: item.date_str || item.dateStr || 'চলমান'
         }));
       }
 

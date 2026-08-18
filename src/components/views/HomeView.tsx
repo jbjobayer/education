@@ -32,7 +32,8 @@ export const HomeView: React.FC = () => {
     searchQuery,
     setSelectedCategory,
     enrolledCourseIds,
-    exams
+    exams,
+    courses
   } = useApp();
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -49,8 +50,8 @@ export const HomeView: React.FC = () => {
 
   // Filter courses by search if any
   const displayedCourses = searchQuery
-    ? mockCourses.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    : mockCourses;
+    ? courses.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    : courses;
 
   return (
     <div className="space-y-6 pb-24 animate-fadeIn">
