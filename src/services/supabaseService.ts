@@ -418,58 +418,27 @@ export const supabaseService = {
   },
 
   /**
-   * Fetch Exams for a specific Course
+   * Fetch Exams for a specific Course from 'course_exams' table
+   * Questions are linked via questions.exam_id = course_exams.id
    */
   async getCourseExams(courseId: string): Promise<CourseExamItem[]> {
     const supabase = getSupabase();
     if (!supabase || !courseId) return [];
 
     try {
-      const { data, error } = await supabase
-        .from('exams')
+      // 1. Fetch from 'course_exams' table
+      let { data, error } = await supabase
+        .from('course_exams')
         .select('*')
         .eq('course_id', courseId)
         .order('created_at', { ascending: true });
 
-      if (error || !data) return [];
-
-      return data.map((item: any, idx: number) => ({
-        id: String(item.id),
-        examNumber: `পরীক্ষা ${String(idx + 1).padStart(2, '0')}`,
-        title: item.title,
-        topic: item.subject || item.title,
-        dateStr: item.date_str || item.dateStr || 'চলমান',
-        questionCount: Number(item.total_questions || item.totalQuestions || (item.questions?.length || 50)),
-        durationMinutes: Number(item.duration_minutes || item.durationMinutes || 30),
-        isLocked: false,
-        examRefId: String(item.id)
-      }));
-    } catch {
-      return [];
-    }
-  },
-
-  // ==========================================
-  // 2. EXAMS & QUESTIONS
-  // ==========================================
-
-  /**
-   * Fetch all Exams with full questions populated
-   */
-  async getExams(): Promise<Exam[]> {
-    const supabase = getSupabase();
-    if (!supabase) return [];
-
-    try {
-      // 1. Fetch exams table
-      let { data, error } = await supabase
-        .from('exams')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Fallback if created_at column doesn't exist
+      // Fallback: try without created_at order if column differs
       if (error) {
-        const fallback = await supabase.from('exams').select('*');
+        const fallback = await supabase
+          .from('course_exams')
+          .select('*')
+          .eq('course_id', courseId);
         data = fallback.data;
         error = fallback.error;
       }
@@ -478,7 +447,102 @@ export const supabaseService = {
         return [];
       }
 
-      // 2. Fetch all questions from questions table at once to link efficiently
+      // 2. Fetch questions from 'questions' table to calculate real count & prefill
+      let allQuestions: any[] = [];
+      try {
+        const { data: qData, error: qErr } = await supabase
+          .from('questions')
+          .select('*');
+        if (!qErr && qData) {
+          allQuestions = qData;
+        }
+      } catch {
+        // Fallback
+      }
+
+      return data.map((item: any, idx: number) => {
+        const examIdStr = String(item.id);
+        
+        // Find questions matching questions.exam_id = course_exams.id
+        let matchedQuestions: Question[] = [];
+        if (allQuestions.length > 0) {
+          const matchedRows = allQuestions.filter((q: any) => 
+            String(q.exam_id) === examIdStr || 
+            String(q.examId) === examIdStr
+          );
+          if (matchedRows.length > 0) {
+            matchedQuestions = matchedRows.map(mapQuestionRow);
+          }
+        }
+
+        // Embedded fallback if stored inside JSON
+        if (matchedQuestions.length === 0 && (item.questions || item.question_list)) {
+          let embedded = item.questions || item.question_list;
+          if (typeof embedded === 'string') {
+            try { embedded = JSON.parse(embedded); } catch {}
+          }
+          if (Array.isArray(embedded)) {
+            matchedQuestions = embedded.map(mapQuestionRow);
+          }
+        }
+
+        const calculatedCount = matchedQuestions.length > 0 
+          ? matchedQuestions.length 
+          : Number(item.total_questions || item.totalQuestions || item.question_count || item.questionCount || 25);
+
+        return {
+          id: examIdStr,
+          examNumber: item.exam_number || item.examNumber || `পরীক্ষা ${String(idx + 1).padStart(2, '0')}`,
+          title: item.title || item.topic || `কোর্স পরীক্ষা ${idx + 1}`,
+          topic: item.topic || item.subject || item.title || 'কোর্স বিষয়ভিত্তিক পরীক্ষা',
+          dateStr: item.date_str || item.dateStr || 'চলমান',
+          questionCount: calculatedCount,
+          durationMinutes: Number(item.duration_minutes || item.durationMinutes || 30),
+          isLocked: Boolean(item.is_locked ?? item.isLocked ?? false),
+          examRefId: examIdStr,
+          courseId: String(item.course_id || courseId),
+          subject: item.subject || item.title || 'কোর্স বিষয়',
+          totalMarks: Number(item.total_marks || item.totalMarks || calculatedCount),
+          negativeMarking: Number(item.negative_marking ?? item.negativeMarking ?? 0.25),
+          status: item.status || 'running',
+          questions: matchedQuestions
+        };
+      });
+    } catch (err) {
+      console.warn('Exception in getCourseExams:', err);
+      return [];
+    }
+  },
+
+  // ==========================================
+  // 2. EXAMS (FREE_EXAMS & COURSE_EXAMS) & QUESTIONS
+  // ==========================================
+
+  /**
+   * Fetch all Free Exams / Model Tests from 'free_exams' table
+   * Questions are linked via questions.free_exam_id = free_exams.id
+   */
+  async getFreeExams(): Promise<Exam[]> {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    try {
+      let { data, error } = await supabase
+        .from('free_exams')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        const fallback = await supabase.from('free_exams').select('*');
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (error || !data || data.length === 0) {
+        return [];
+      }
+
+      // Fetch all questions from 'questions' table to match free_exam_id
       let allQuestionsData: any[] = [];
       try {
         const { data: qData, error: qError } = await supabase
@@ -488,79 +552,88 @@ export const supabaseService = {
           allQuestionsData = qData;
         }
       } catch (err) {
-        console.warn('Could not batch load questions:', err);
+        console.warn('Could not batch load questions for free_exams:', err);
       }
 
       return data.map((item: any) => {
-        const examIdStr = String(item.id);
+        const freeExamIdStr = String(item.id);
 
-        // Check embedded questions in exam row first
+        // Find questions matching questions.free_exam_id = free_exams.id
         let questions: Question[] = [];
-        let embedded = item.questions || item.question_list || item.data || item.quiz_questions;
-        if (typeof embedded === 'string' && embedded.trim()) {
-          try {
-            embedded = JSON.parse(embedded);
-          } catch {}
-        }
-        if (Array.isArray(embedded) && embedded.length > 0) {
-          questions = embedded.map(mapQuestionRow);
-        }
-
-        // If no embedded questions, match from questions table
-        if (questions.length === 0 && allQuestionsData.length > 0) {
+        if (allQuestionsData.length > 0) {
           const matched = allQuestionsData.filter((q: any) => 
-            String(q.exam_id) === examIdStr || 
-            String(q.examId) === examIdStr ||
-            String(q.exam_ref_id) === examIdStr
+            String(q.free_exam_id) === freeExamIdStr || 
+            String(q.freeExamId) === freeExamIdStr
           );
           if (matched.length > 0) {
             questions = matched.map(mapQuestionRow);
           }
         }
 
+        // Check embedded JSON in free_exams row
+        if (questions.length === 0) {
+          let embedded = item.questions || item.question_list || item.data || item.quiz_questions;
+          if (typeof embedded === 'string' && embedded.trim()) {
+            try {
+              embedded = JSON.parse(embedded);
+            } catch {}
+          }
+          if (Array.isArray(embedded) && embedded.length > 0) {
+            questions = embedded.map(mapQuestionRow);
+          }
+        }
+
         const totalQCount = questions.length > 0 
           ? questions.length 
-          : Number(item.total_questions || item.totalQuestions || 20);
+          : Number(item.total_questions || item.totalQuestions || item.question_count || 20);
 
         return {
-          id: examIdStr,
-          title: item.title || 'অনলাইন পরীক্ষা',
-          category: item.category || 'model_test',
+          id: freeExamIdStr,
+          title: item.title || 'ফ্রি মডেল টেস্ট',
+          category: item.category || 'free',
           subject: item.subject || 'সাধারণ বিষয়',
           totalMarks: Number(item.total_marks || item.totalMarks || 100),
           durationMinutes: Number(item.duration_minutes || item.durationMinutes || 60),
           negativeMarking: Number(item.negative_marking ?? item.negativeMarking ?? 0.25),
           totalQuestions: totalQCount,
           status: item.status || 'running',
-          participantsCount: Number(item.participants_count || 0),
+          participantsCount: Number(item.participants_count || item.participantsCount || 0),
           questions: questions,
-          isFree: item.is_free !== undefined && item.is_free !== null ? Boolean(item.is_free) : true,
+          isFree: true,
+          examType: 'free_exam',
           dateStr: item.date_str || item.dateStr || 'চলমান'
         };
       });
     } catch (e) {
-      console.warn('Exception in getExams:', e);
+      console.warn('Exception in getFreeExams:', e);
       return [];
     }
   },
 
   /**
-   * Fetch questions for an exam from 'questions' table or 'exams' table
+   * Fetch all Exams (Queries 'free_exams' table)
    */
-  async getExamQuestions(examId: string): Promise<Question[]> {
+  async getExams(): Promise<Exam[]> {
+    return this.getFreeExams();
+  },
+
+  /**
+   * Fetch questions for a Course Exam from 'questions' table
+   * WHERE exam_id = course_exams.id
+   */
+  async getCourseExamQuestions(courseExamId: string): Promise<Question[]> {
     const supabase = getSupabase();
-    if (!supabase || !examId) return [];
+    if (!supabase || !courseExamId) return [];
 
     try {
-      const examIdStr = String(examId);
+      const examIdStr = String(courseExamId);
 
-      // 1. Try querying 'questions' table with exam_id
+      // Query questions table with exam_id = course_exams.id
       let { data, error } = await supabase
         .from('questions')
         .select('*')
         .eq('exam_id', examIdStr);
 
-      // If no data or error, try without strict type or with examId column
       if (error || !data || data.length === 0) {
         const alt = await supabase
           .from('questions')
@@ -572,12 +645,12 @@ export const supabaseService = {
         }
       }
 
-      // If still no data, try matching numeric or uuid
-      if ((error || !data || data.length === 0) && !isNaN(Number(examId))) {
+      // Try numeric if applicable
+      if ((error || !data || data.length === 0) && !isNaN(Number(courseExamId))) {
         const numRes = await supabase
           .from('questions')
           .select('*')
-          .eq('exam_id', Number(examId));
+          .eq('exam_id', Number(courseExamId));
         if (!numRes.error && numRes.data && numRes.data.length > 0) {
           data = numRes.data;
           error = null;
@@ -588,19 +661,17 @@ export const supabaseService = {
         return data.map(mapQuestionRow);
       }
 
-      // 2. Check if questions are stored as JSON in the exam row
+      // Check embedded questions in course_exams row
       const { data: examRow } = await supabase
-        .from('exams')
+        .from('course_exams')
         .select('*')
-        .eq('id', examId)
+        .eq('id', courseExamId)
         .maybeSingle();
 
       if (examRow) {
-        let embedded = examRow.questions || examRow.question_list || examRow.data || examRow.quiz_questions;
+        let embedded = examRow.questions || examRow.question_list || examRow.data;
         if (typeof embedded === 'string' && embedded.trim()) {
-          try {
-            embedded = JSON.parse(embedded);
-          } catch {}
+          try { embedded = JSON.parse(embedded); } catch {}
         }
         if (Array.isArray(embedded) && embedded.length > 0) {
           return embedded.map(mapQuestionRow);
@@ -609,9 +680,105 @@ export const supabaseService = {
 
       return [];
     } catch (err) {
-      console.warn('Error fetching exam questions:', err);
+      console.warn('Error fetching course exam questions:', err);
       return [];
     }
+  },
+
+  /**
+   * Fetch questions for a Free Exam / Model Test from 'questions' table
+   * WHERE free_exam_id = free_exams.id
+   */
+  async getFreeExamQuestions(freeExamId: string): Promise<Question[]> {
+    const supabase = getSupabase();
+    if (!supabase || !freeExamId) return [];
+
+    try {
+      const freeExamIdStr = String(freeExamId);
+
+      // Query questions table with free_exam_id = free_exams.id
+      let { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('free_exam_id', freeExamIdStr);
+
+      if (error || !data || data.length === 0) {
+        const alt = await supabase
+          .from('questions')
+          .select('*')
+          .eq('freeExamId', freeExamIdStr);
+        if (!alt.error && alt.data && alt.data.length > 0) {
+          data = alt.data;
+          error = null;
+        }
+      }
+
+      // Try numeric if applicable
+      if ((error || !data || data.length === 0) && !isNaN(Number(freeExamId))) {
+        const numRes = await supabase
+          .from('questions')
+          .select('*')
+          .eq('free_exam_id', Number(freeExamId));
+        if (!numRes.error && numRes.data && numRes.data.length > 0) {
+          data = numRes.data;
+          error = null;
+        }
+      }
+
+      if (!error && data && data.length > 0) {
+        return data.map(mapQuestionRow);
+      }
+
+      // Check embedded questions in free_exams row
+      const { data: examRow } = await supabase
+        .from('free_exams')
+        .select('*')
+        .eq('id', freeExamId)
+        .maybeSingle();
+
+      if (examRow) {
+        let embedded = examRow.questions || examRow.question_list || examRow.data || examRow.quiz_questions;
+        if (typeof embedded === 'string' && embedded.trim()) {
+          try { embedded = JSON.parse(embedded); } catch {}
+        }
+        if (Array.isArray(embedded) && embedded.length > 0) {
+          return embedded.map(mapQuestionRow);
+        }
+      }
+
+      return [];
+    } catch (err) {
+      console.warn('Error fetching free exam questions:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Unified question fetcher:
+   * Dynamically loads by checking free_exam_id or exam_id according to examType or query match
+   */
+  async getExamQuestions(examId: string, examType?: 'course_exam' | 'free_exam'): Promise<Question[]> {
+    if (!examId) return [];
+
+    if (examType === 'course_exam') {
+      return this.getCourseExamQuestions(examId);
+    }
+    if (examType === 'free_exam') {
+      return this.getFreeExamQuestions(examId);
+    }
+
+    // If examType is not explicitly specified, try free_exams first then course_exams
+    const freeQuestions = await this.getFreeExamQuestions(examId);
+    if (freeQuestions.length > 0) {
+      return freeQuestions;
+    }
+
+    const courseQuestions = await this.getCourseExamQuestions(examId);
+    if (courseQuestions.length > 0) {
+      return courseQuestions;
+    }
+
+    return [];
   },
 
   // ==========================================

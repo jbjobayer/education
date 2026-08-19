@@ -45,7 +45,8 @@ export const CourseDetailsView: React.FC = () => {
     startExam,
     setViewingResult,
     showToast,
-    userProfile
+    userProfile,
+    examResults
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<CourseTabType>('details');
@@ -195,55 +196,82 @@ export const CourseDetailsView: React.FC = () => {
       return;
     }
 
+    const examTargetId = examItem.examRefId || examItem.id;
     let questions: any[] = [];
-    if (examItem.examRefId) {
-      try {
-        questions = await supabaseService.getExamQuestions(examItem.examRefId);
-      } catch {
-        // fallback
-      }
+    
+    try {
+      // 1. Direct query from questions table WHERE exam_id = course_exams.id
+      questions = await supabaseService.getCourseExamQuestions(examTargetId);
+    } catch (err) {
+      console.warn('Error loading course exam questions:', err);
     }
 
-    const targetExam = mockExams.find(e => e.id === examItem.examRefId) || mockExams[0];
+    if (questions.length === 0 && examItem.questions && examItem.questions.length > 0) {
+      questions = examItem.questions;
+    }
+
+    const targetExam = mockExams.find(e => e.id === examTargetId) || mockExams[0];
+    const finalQuestions = questions.length > 0 ? questions : (targetExam?.questions || []);
+    const totalQCount = finalQuestions.length > 0 ? finalQuestions.length : examItem.questionCount;
+
     const customExam: Exam = {
-      ...targetExam,
-      id: examItem.examRefId || examItem.id,
+      id: examTargetId,
       title: `${examItem.examNumber}: ${examItem.topic}`,
-      durationMinutes: examItem.durationMinutes,
-      totalQuestions: examItem.questionCount,
-      totalMarks: examItem.questionCount,
-      questions: questions.length > 0 ? questions : (targetExam?.questions || [])
+      category: 'subject',
+      subject: examItem.subject || course.title,
+      totalMarks: examItem.totalMarks || totalQCount,
+      durationMinutes: examItem.durationMinutes || 30,
+      negativeMarking: examItem.negativeMarking ?? 0.25,
+      totalQuestions: totalQCount,
+      questions: finalQuestions,
+      status: examItem.status || 'running',
+      participantsCount: course.totalStudents || 120,
+      isFree: false,
+      examType: 'course_exam',
+      courseId: course.id,
+      dateStr: examItem.dateStr
     };
     startExam(customExam);
   };
 
   // Handler for viewing answer sheet
-  const handleViewAnswerSheet = (examItem: CourseExamItem) => {
-    const targetExam = mockExams.find(e => e.id === examItem.examRefId) || mockExams[0];
-    const mockResult = {
+  const handleViewAnswerSheet = async (examItem: CourseExamItem) => {
+    const examTargetId = examItem.examRefId || examItem.id;
+    
+    // Check if user already took this exam
+    const existingResult = examResults.find(r => r.examId === examTargetId);
+    if (existingResult) {
+      setViewingResult(existingResult);
+      return;
+    }
+
+    // Otherwise generate answer review with real questions if available
+    let questions: any[] = [];
+    try {
+      questions = await supabaseService.getCourseExamQuestions(examTargetId);
+    } catch {}
+
+    const totalQ = questions.length > 0 ? questions.length : examItem.questionCount;
+    const correctCount = Math.max(1, Math.floor(totalQ * 0.8));
+
+    const defaultResult = {
       id: `res-${examItem.id}`,
-      examId: targetExam.id,
+      examId: examTargetId,
       examTitle: `${examItem.examNumber}: ${examItem.topic}`,
-      date: examItem.dateStr,
-      score: 84,
-      totalMarks: examItem.questionCount,
-      correctAnswers: Math.floor(examItem.questionCount * 0.84),
-      wrongAnswers: 8,
-      skippedAnswers: examItem.questionCount - Math.floor(examItem.questionCount * 0.84) - 8,
-      timeSpentSeconds: 2450,
-      userAnswers: {
-        'qa-1': 3,
-        'qa-2': 1,
-        'qa-3': 0,
-        'qa-4': 1,
-        'qa-5': 1,
-        'qe-1': 1,
-        'qe-2': 1,
-      },
-      rank: 14,
-      totalParticipants: course.totalStudents || 722,
+      date: examItem.dateStr || 'চলমান',
+      score: correctCount,
+      totalMarks: totalQ,
+      correctAnswers: correctCount,
+      wrongAnswers: Math.max(0, totalQ - correctCount - 2),
+      skippedAnswers: 2,
+      timeSpentSeconds: (examItem.durationMinutes || 30) * 40,
+      userAnswers: {},
+      rank: 1,
+      totalParticipants: course.totalStudents || 100,
+      examType: 'course_exam' as const,
+      courseId: course.id
     };
-    setViewingResult(mockResult);
+    setViewingResult(defaultResult);
   };
 
   // Handler for downloading or viewing PDF sheet

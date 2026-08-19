@@ -211,7 +211,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (client) {
       const channel = client
         .channel('public:db-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'exams' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'course_exams' }, () => {
+          refreshFromDatabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'free_exams' }, () => {
+          refreshFromDatabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, () => {
           refreshFromDatabase();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => {
@@ -221,6 +227,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           refreshFromDatabase();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'course_enrollments' }, () => {
+          refreshFromDatabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'exam_results' }, () => {
           refreshFromDatabase();
         })
         .subscribe();
@@ -307,6 +316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await supabaseService.submitExamResult({
         userId,
         examId: result.examId,
+        courseId: result.courseId,
         examTitle: result.examTitle,
         score: result.score,
         totalMarks: result.totalMarks,

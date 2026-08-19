@@ -46,6 +46,12 @@ export interface CourseExamItem {
   durationMinutes: number;
   isLocked?: boolean;
   examRefId?: string;
+  courseId?: string;
+  subject?: string;
+  totalMarks?: number;
+  negativeMarking?: number;
+  status?: 'upcoming' | 'running' | 'completed';
+  questions?: Question[];
 }
 
 export interface CourseOverviewSection {
@@ -126,6 +132,9 @@ export interface Exam {
   participantsCount: number;
   dateStr?: string;
   isFree?: boolean;
+  examType?: 'course_exam' | 'free_exam';
+  courseId?: string;
+  course_id?: string;
 }
 
 export interface ExamResult {
@@ -142,6 +151,8 @@ export interface ExamResult {
   userAnswers: Record<string, number>; // questionId -> optionIndex
   rank?: number;
   totalParticipants?: number;
+  examType?: 'course_exam' | 'free_exam';
+  courseId?: string;
 }
 
 export interface LeaderboardEntry {

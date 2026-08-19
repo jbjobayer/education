@@ -46,7 +46,7 @@ export const ExamModal: React.FC = () => {
         setLoadedQuestions(activeExam.questions);
       } else {
         setIsLoadingQuestions(true);
-        supabaseService.getExamQuestions(activeExam.id).then((qs) => {
+        supabaseService.getExamQuestions(activeExam.id, activeExam.examType).then((qs) => {
           setLoadedQuestions(qs);
           setIsLoadingQuestions(false);
         }).catch(() => {
@@ -138,6 +138,8 @@ export const ExamModal: React.FC = () => {
       userAnswers: answers,
       rank: Math.floor(Math.random() * 10) + 1,
       totalParticipants: activeExam.participantsCount + 1,
+      examType: activeExam.examType,
+      courseId: activeExam.courseId || activeExam.course_id
     };
 
     try {
