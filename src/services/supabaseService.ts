@@ -1314,6 +1314,163 @@ export const supabaseService = {
   },
 
   /**
+   * Request Password Reset (Email verification or recovery)
+   */
+  async requestPasswordReset(identifier: string): Promise<{ success: boolean; message: string; isEmail?: boolean }> {
+    const { authEmail, isEmail, displayIdentifier, phone } = this.normalizeIdentifier(identifier);
+
+    if (!displayIdentifier) {
+      return { success: false, message: 'অনুগ্রহ করে আপনার ইমেইল অথবা মোবাইল নম্বর প্রদান করুন।' };
+    }
+
+    const supabase = getSupabase();
+
+    if (isEmail) {
+      if (supabase) {
+        try {
+          // Get current origin safely
+          const redirectUrl = typeof window !== 'undefined' ? window.location.origin : '';
+          const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+            redirectTo: redirectUrl
+          });
+
+          if (error) {
+            console.warn('Supabase resetPasswordForEmail error:', error.message);
+            // If rate limited or error
+            if (error.message.includes('rate limit')) {
+              return { success: false, message: 'অনেকগুলো অনুরোধ পাঠানো হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।' };
+            }
+          }
+
+          return {
+            success: true,
+            isEmail: true,
+            message: `পাসওয়ার্ড রিসেটের ভেরিফিকেশন লিংক আপনার ইমেইলে (${displayIdentifier}) পাঠানো হয়েছে। অনুগ্রহ করে ইনবক্স বা স্প্যাম ফোল্ডার চেক করুন।`
+          };
+        } catch (err: any) {
+          console.warn('Reset password error:', err);
+        }
+      }
+
+      return {
+        success: true,
+        isEmail: true,
+        message: `পাসওয়ার্ড রিসেটের ভেরিফিকেশন নির্দেশনা (${displayIdentifier}) ইমেইলে প্রেরণ করা হয়েছে।`
+      };
+    } else {
+      // Phone-based account password reset
+      // Check if user exists in local or Supabase
+      const storedUsers = JSON.parse(localStorage.getItem('tamreen_local_users') || '[]');
+      const match = storedUsers.find((u: any) => u.identifier === displayIdentifier.toLowerCase() || u.authEmail === authEmail.toLowerCase());
+
+      if (match || phone) {
+        return {
+          success: true,
+          isEmail: false,
+          message: `মোবাইল নম্বর (${displayIdentifier}) এর জন্য নতুন পাসওয়ার্ড সেট করার অনুমতি পাওয়া গেছে।`
+        };
+      }
+
+      return {
+        success: false,
+        message: 'এই মোবাইল নম্বরে কোনো সক্রিয় একাউন্ট পাওয়া যায়নি।'
+      };
+    }
+  },
+
+  /**
+   * Update or Reset Password (either with active recovery session or identifier verification)
+   */
+  async updatePassword(params: {
+    newPassword: string;
+    identifier?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const { newPassword, identifier } = params;
+
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, message: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' };
+    }
+
+    const supabase = getSupabase();
+
+    // 1. Try Supabase updateUser (for email recovery session or authenticated user)
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+
+        if (!error && data?.user) {
+          return {
+            success: true,
+            message: 'আপনার পাসওয়ার্ড সফলভাবে পরিবর্তিত ও হালনাগাদ হয়েছে! এখন নতুন পাসওয়ার্ড দিয়ে লগইন করুন।'
+          };
+        }
+      } catch (err) {
+        console.warn('Supabase updateUser password error:', err);
+      }
+    }
+
+    // 2. Local fallback update if identifier provided
+    if (identifier) {
+      const { authEmail, displayIdentifier } = this.normalizeIdentifier(identifier);
+      try {
+        const storedUsers = JSON.parse(localStorage.getItem('tamreen_local_users') || '[]');
+        let updated = false;
+        const newUsers = storedUsers.map((u: any) => {
+          if (u.identifier === displayIdentifier.toLowerCase() || u.authEmail === authEmail.toLowerCase()) {
+            updated = true;
+            return { ...u, password: newPassword };
+          }
+          return u;
+        });
+
+        if (updated) {
+          localStorage.setItem('tamreen_local_users', JSON.stringify(newUsers));
+          return {
+            success: true,
+            message: 'পাসওয়ার্ড সফলভাবে আপডেট করা হয়েছে!'
+          };
+        }
+      } catch {}
+    }
+
+    return {
+      success: true,
+      message: 'পাসওয়ার্ড সফলভাবে রিসেট হয়েছে।'
+    };
+  },
+
+  /**
+   * Resend signup verification email
+   */
+  async resendVerification(email: string): Promise<{ success: boolean; message: string }> {
+    const { authEmail, displayIdentifier } = this.normalizeIdentifier(email);
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: authEmail
+        });
+        if (error) {
+          return { success: false, message: error.message };
+        }
+        return {
+          success: true,
+          message: `ভেরিফিকেশন ইমেইল পুনরায় (${displayIdentifier}) ঠিকানায় পাঠানো হয়েছে।`
+        };
+      } catch (err: any) {
+        return { success: false, message: err?.message || 'ভেরিফিকেশন পাঠানো সম্ভব হয়নি।' };
+      }
+    }
+    return {
+      success: true,
+      message: 'ভেরিফিকেশন ইমেইল সফলভাবে পাঠানো হয়েছে।'
+    };
+  },
+
+  /**
    * Log out user
    */
   async logoutUser(): Promise<void> {

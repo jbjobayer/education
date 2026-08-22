@@ -67,12 +67,14 @@ interface AppContextType {
   isLoggedIn: boolean;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  authModalMode: 'login' | 'register';
-  setAuthModalMode: (mode: 'login' | 'register') => void;
-  openAuthModal: (mode?: 'login' | 'register') => void;
+  authModalMode: 'login' | 'register' | 'forgot' | 'update-password';
+  setAuthModalMode: (mode: 'login' | 'register' | 'forgot' | 'update-password') => void;
+  openAuthModal: (mode?: 'login' | 'register' | 'forgot' | 'update-password') => void;
   login: (identifier: string, password: string) => Promise<{ success: boolean; message: string }>;
   register: (name: string, identifier: string, password: string, institution?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
+  resetPasswordRequest: (identifier: string) => Promise<{ success: boolean; message: string; isEmail?: boolean }>;
+  updateUserPassword: (newPassword: string, identifier?: string) => Promise<{ success: boolean; message: string }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -95,9 +97,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot' | 'update-password'>('login');
 
-  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+  const openAuthModal = (mode: 'login' | 'register' | 'forgot' | 'update-password' = 'login') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
   };
@@ -429,6 +431,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: res.success, message: res.message };
   };
 
+  const resetPasswordRequest = async (identifier: string): Promise<{ success: boolean; message: string; isEmail?: boolean }> => {
+    return await supabaseService.requestPasswordReset(identifier);
+  };
+
+  const updateUserPassword = async (newPassword: string, identifier?: string): Promise<{ success: boolean; message: string }> => {
+    return await supabaseService.updatePassword({ newPassword, identifier });
+  };
+
   const logout = async () => {
     await supabaseService.logoutUser();
     setIsLoggedIn(false);
@@ -548,9 +558,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`অভিনন্দন! আপনার ${planName} সাবস্ক্রিপশন সফলভাবে সক্রিয় হয়েছে।`, 'success');
   };
 
-  // Initial auth sync with Supabase
+  // Initial auth sync with Supabase and password recovery handler
   useEffect(() => {
+    let authListener: { subscription?: { unsubscribe: () => void } } | null = null;
+
     const syncAuth = async () => {
+      // Check if URL hash indicates password recovery (e.g., from email link)
+      if (typeof window !== 'undefined') {
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+        if (hash.includes('type=recovery') || hash.includes('access_token=') || search.includes('type=recovery')) {
+          setAuthModalMode('update-password');
+          setIsAuthModalOpen(true);
+        }
+      }
+
       const supabase = getSupabase();
       if (supabase) {
         try {
@@ -564,10 +586,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               localStorage.setItem('tamreen_user_profile', JSON.stringify(p));
             }
           }
+
+          // Listen for password recovery or auth state change events
+          const { data: listenerData } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+              setAuthModalMode('update-password');
+              setIsAuthModalOpen(true);
+              showToast('পাসওয়ার্ড পরিবর্তনের অনুমোদন পাওয়া গেছে। নতুন পাসওয়ার্ড লিখুন।', 'info');
+            } else if (event === 'SIGNED_IN' && session?.user) {
+              setIsLoggedIn(true);
+              localStorage.setItem('tamreen_is_logged_in', 'true');
+              const p = await supabaseService.getProfile(session.user.id);
+              if (p) {
+                setUserProfile(p);
+                localStorage.setItem('tamreen_user_profile', JSON.stringify(p));
+              }
+            } else if (event === 'SIGNED_OUT') {
+              setIsLoggedIn(false);
+              localStorage.removeItem('tamreen_is_logged_in');
+            }
+          });
+          authListener = listenerData;
         } catch {}
       }
     };
+
     syncAuth();
+
+    return () => {
+      if (authListener?.subscription?.unsubscribe) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, [isSupabaseConnected]);
 
   const isPremiumMember = Boolean(userProfile.isPremium || userProfile.subscriptionPlanId);
@@ -632,6 +682,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         register,
         logout,
+        resetPasswordRequest,
+        updateUserPassword,
       }}
     >
       {children}
