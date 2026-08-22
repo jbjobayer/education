@@ -223,7 +223,7 @@ export const ResultView: React.FC = () => {
             <div className="flex items-center gap-2">
               <UserIcon className="w-4 h-4 text-sky-200 shrink-0" />
               <h2 className="text-base sm:text-xl font-black text-white truncate leading-tight">
-                {userProfile.name || 'Jobayer Ahmed'}
+                {viewingResult.participantName || userProfile.name || 'মুহাম্মদ শিক্ষার্থী'}
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-sky-100/90 font-medium truncate mt-1">

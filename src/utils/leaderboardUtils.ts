@@ -169,9 +169,9 @@ export function generateExamLeaderboard(
     const userEntry: LeaderboardEntry = {
       id: 'current-user-res',
       rank: 1,
-      name: userProfile?.name || 'মুহাম্মদ আব্দুল্লাহ আল-মামুন',
+      name: userResult.participantName || userProfile?.name || 'মুহাম্মদ শিক্ষার্থী',
       avatar: userProfile?.avatar || '',
-      institution: userProfile?.institution || 'সরকারি মাদ্রাসা-ই-আলিয়া, ঢাকা',
+      institution: userResult.participantInstitution || userProfile?.institution || 'মাদ্রাসা / কলেজ',
       correctAnswers: userResult.correctAnswers,
       wrongAnswers: userResult.wrongAnswers,
       score: userResult.score,

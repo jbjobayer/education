@@ -24,7 +24,7 @@ import {
 import { supabaseService } from '../../services/supabaseService';
 
 export const ExamModal: React.FC = () => {
-  const { activeExam, closeExam, saveExamResult, showToast } = useApp();
+  const { activeExam, closeExam, saveExamResult, showToast, participantInfo, userProfile } = useApp();
   const { formatArabicText } = useFont();
 
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -124,6 +124,10 @@ export const ExamModal: React.FC = () => {
 
     const timeSpent = activeExam.durationMinutes * 60 - timeLeft;
 
+    const participantName = participantInfo?.name?.trim() || userProfile?.name || 'মুহাম্মদ শিক্ষার্থী';
+    const participantInstitution = participantInfo?.institution?.trim() || userProfile?.institution || '';
+    const participantPhone = participantInfo?.phone?.trim() || userProfile?.phone || '';
+
     const result: ExamResult = {
       id: `res-${Date.now()}`,
       examId: activeExam.id,
@@ -139,7 +143,10 @@ export const ExamModal: React.FC = () => {
       rank: Math.floor(Math.random() * 10) + 1,
       totalParticipants: activeExam.participantsCount + 1,
       examType: activeExam.examType,
-      courseId: activeExam.courseId || activeExam.course_id
+      courseId: activeExam.courseId || activeExam.course_id,
+      participantName,
+      participantInstitution,
+      participantPhone
     };
 
     try {

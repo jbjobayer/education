@@ -14,7 +14,10 @@ import {
   BookOpen,
   Sparkles,
   Briefcase,
-  Layers
+  Layers,
+  LogIn,
+  User,
+  UserCheck
 } from 'lucide-react';
 import { MainTab } from '../types';
 
@@ -25,7 +28,9 @@ export const Header: React.FC = () => {
     activeTab,
     setActiveTab,
     setSelectedCategory,
-    userProfile
+    userProfile,
+    isLoggedIn,
+    openAuthModal
   } = useApp();
 
   const { isDark, toggleTheme } = useTheme();
@@ -164,29 +169,44 @@ export const Header: React.FC = () => {
             )}
           </button>
 
-          {/* Profile Avatar Button */}
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`w-10 h-10 rounded-full p-0.5 flex items-center justify-center overflow-hidden transition-all active:scale-95 shrink-0 cursor-pointer ${
-              activeTab === 'profile'
-                ? 'ring-2 ring-[#005a36] dark:ring-emerald-400 shadow-[0_0_12px_rgba(0,90,54,0.5)]'
-                : 'neu-btn border border-amber-400/40'
-            }`}
-            title="আমার প্রোফাইল"
-          >
-            {userProfile?.avatar ? (
-              <img
-                src={userProfile.avatar}
-                alt={userProfile.name || 'ইউজার প্রোফাইল'}
-                className="w-full h-full rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-[#005a36] to-emerald-700 text-white flex items-center justify-center font-bold text-xs">
-                {userProfile?.name ? userProfile.name.slice(0, 1) : 'প'}
-              </div>
-            )}
-          </button>
+          {/* Profile or Login Button */}
+          {!isLoggedIn ? (
+            <button
+              id="header-login-btn"
+              onClick={() => openAuthModal('login')}
+              className="h-10 px-3 sm:px-3.5 rounded-2xl bg-gradient-to-r from-[#005a36] to-emerald-700 hover:from-[#004d2e] hover:to-emerald-800 text-white flex items-center gap-1.5 font-bold text-xs sm:text-sm shadow-[2px_2px_8px_rgba(0,90,54,0.35)] active:scale-95 transition-all cursor-pointer border border-amber-400/40 shrink-0"
+              title="লগইন বা নতুন একাউন্ট খুলুন"
+            >
+              <LogIn className="w-4 h-4 text-amber-300 stroke-[2.5]" />
+              <span className="text-amber-300 font-extrabold">লগইন</span>
+            </button>
+          ) : (
+            <button
+              id="header-profile-btn"
+              onClick={() => setActiveTab('profile')}
+              className={`w-10 h-10 rounded-2xl p-0.5 flex items-center justify-center overflow-hidden transition-all active:scale-95 shrink-0 cursor-pointer relative ${
+                activeTab === 'profile'
+                  ? 'ring-2 ring-[#005a36] dark:ring-emerald-400 shadow-[0_0_12px_rgba(0,90,54,0.5)]'
+                  : 'neu-btn border border-emerald-500/40'
+              }`}
+              title={`আমার প্রোফাইল (${userProfile?.name || 'লগইন আছেন'})`}
+            >
+              {userProfile?.avatar ? (
+                <img
+                  src={userProfile.avatar}
+                  alt={userProfile.name || 'ইউজার প্রোফাইল'}
+                  className="w-full h-full rounded-2xl object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#005a36] to-emerald-700 text-white flex items-center justify-center font-black text-xs">
+                  {userProfile?.name ? userProfile.name.slice(0, 1) : 'প'}
+                </div>
+              )}
+              {/* Online verified indicator badge */}
+              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+            </button>
+          )}
         </div>
       </div>
 

@@ -135,6 +135,9 @@ export interface Exam {
   examType?: 'course_exam' | 'free_exam';
   courseId?: string;
   course_id?: string;
+  authorName?: string;
+  institution?: string;
+  shareUrl?: string;
 }
 
 export interface ExamResult {
@@ -153,6 +156,9 @@ export interface ExamResult {
   totalParticipants?: number;
   examType?: 'course_exam' | 'free_exam';
   courseId?: string;
+  participantName?: string;
+  participantInstitution?: string;
+  participantPhone?: string;
 }
 
 export interface LeaderboardEntry {

@@ -27,6 +27,7 @@ export const HomeView: React.FC = () => {
     setActiveTab, 
     setSelectedCourseDetails, 
     startExam, 
+    openExamLanding,
     setIsRoutineOpen, 
     setIsNotificationOpen,
     searchQuery,
@@ -319,7 +320,7 @@ export const HomeView: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => startExam(exam)}
+                  onClick={() => openExamLanding(exam)}
                   className="w-full sm:w-auto px-5 py-2.5 rounded-xl neu-btn-primary font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                 >
                   <Zap className="w-4 h-4 text-amber-300" />

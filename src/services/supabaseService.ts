@@ -618,6 +618,81 @@ export const supabaseService = {
   },
 
   /**
+   * Fetch a single Exam by ID (checks 'free_exams' and 'course_exams')
+   * with full questions populated
+   */
+  async getExamById(examId: string): Promise<Exam | null> {
+    const supabase = getSupabase();
+    if (!supabase || !examId) return null;
+
+    try {
+      const examIdStr = String(examId);
+
+      // 1. Try free_exams table
+      const { data: freeRow, error: freeErr } = await supabase
+        .from('free_exams')
+        .select('*')
+        .eq('id', examIdStr)
+        .maybeSingle();
+
+      if (!freeErr && freeRow) {
+        const questions = await this.getFreeExamQuestions(examIdStr);
+        const totalQ = questions.length > 0 ? questions.length : Number(freeRow.total_questions || freeRow.question_count || 20);
+        return {
+          id: String(freeRow.id),
+          title: freeRow.title || 'ফ্রি মডেল টেস্ট',
+          category: freeRow.category || 'free',
+          subject: freeRow.subject || 'সাধারণ বিষয়',
+          totalMarks: Number(freeRow.total_marks || totalQ),
+          durationMinutes: Number(freeRow.duration_minutes || 30),
+          negativeMarking: Number(freeRow.negative_marking ?? 0.25),
+          totalQuestions: totalQ,
+          status: freeRow.status || 'running',
+          participantsCount: Number(freeRow.participants_count || freeRow.participantsCount || 0),
+          questions: questions,
+          isFree: true,
+          examType: 'free_exam',
+          dateStr: freeRow.date_str || freeRow.dateStr || 'চলমান'
+        };
+      }
+
+      // 2. Try course_exams table
+      const { data: courseRow, error: courseErr } = await supabase
+        .from('course_exams')
+        .select('*')
+        .eq('id', examIdStr)
+        .maybeSingle();
+
+      if (!courseErr && courseRow) {
+        const questions = await this.getCourseExamQuestions(examIdStr);
+        const totalQ = questions.length > 0 ? questions.length : Number(courseRow.total_questions || courseRow.question_count || 25);
+        return {
+          id: String(courseRow.id),
+          title: courseRow.title || 'কোর্স পরীক্ষা',
+          category: 'subject',
+          subject: courseRow.subject || courseRow.title || 'কোর্স বিষয়',
+          totalMarks: Number(courseRow.total_marks || totalQ),
+          durationMinutes: Number(courseRow.duration_minutes || 30),
+          negativeMarking: Number(courseRow.negative_marking ?? 0.25),
+          totalQuestions: totalQ,
+          status: courseRow.status || 'running',
+          participantsCount: Number(courseRow.participants_count || courseRow.participantsCount || 0),
+          questions: questions,
+          isFree: false,
+          examType: 'course_exam',
+          courseId: String(courseRow.course_id || ''),
+          dateStr: courseRow.date_str || courseRow.dateStr || 'চলমান'
+        };
+      }
+
+      return null;
+    } catch (err) {
+      console.warn('Error fetching exam by ID:', err);
+      return null;
+    }
+  },
+
+  /**
    * Fetch questions for a Course Exam from 'questions' table
    * WHERE exam_id = course_exams.id
    */
@@ -781,9 +856,476 @@ export const supabaseService = {
     return [];
   },
 
+  /**
+   * Helper for Admin: Create a Free Exam and insert all its questions in 'questions' table
+   * with free_exam_id = newExam.id
+   */
+  async createFreeExamWithQuestions(examData: {
+    title: string;
+    subject: string;
+    category?: 'free' | 'daily' | 'model_test';
+    totalMarks?: number;
+    durationMinutes?: number;
+    negativeMarking?: number;
+    questions: Array<{
+      question: string;
+      arabicQuestion?: string;
+      options: string[];
+      correctIndex: number;
+      explanation?: string;
+      subject?: string;
+    }>;
+  }): Promise<{ success: boolean; examId?: string; message: string }> {
+    const supabase = getSupabase();
+    if (!supabase) return { success: false, message: 'Supabase কানেক্টেড নয়।' };
+
+    try {
+      // 1. Insert into free_exams table
+      const { data: newExam, error: examError } = await supabase
+        .from('free_exams')
+        .insert({
+          title: examData.title,
+          subject: examData.subject,
+          category: examData.category || 'free',
+          total_marks: examData.totalMarks || examData.questions.length,
+          duration_minutes: examData.durationMinutes || 30,
+          negative_marking: examData.negativeMarking ?? 0.25,
+          total_questions: examData.questions.length,
+          status: 'running',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (examError || !newExam) {
+        return { success: false, message: `পরীক্ষা তৈরিতে ব্যর্থ: ${examError?.message || 'অজানা ত্রুটি'}` };
+      }
+
+      const freeExamId = String(newExam.id);
+
+      // 2. Prepare questions with free_exam_id
+      const formattedQuestions = examData.questions.map((q) => ({
+        free_exam_id: freeExamId,
+        question_text: q.question,
+        arabic_question: q.arabicQuestion || null,
+        options: q.options,
+        correct_index: q.correctIndex,
+        explanation: q.explanation || '',
+        subject: q.subject || examData.subject,
+        created_at: new Date().toISOString()
+      }));
+
+      // 3. Insert questions into 'questions' table
+      const { error: qError } = await supabase
+        .from('questions')
+        .insert(formattedQuestions);
+
+      if (qError) {
+        return { 
+          success: false, 
+          examId: freeExamId, 
+          message: `পরীক্ষা যুক্ত হয়েছে কিন্তু প্রশ্নে ত্রুটি: ${qError.message}` 
+        };
+      }
+
+      return { success: true, examId: freeExamId, message: 'পরীক্ষা ও প্রশ্ন সফলভাবে তৈরি হয়েছে!' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'অপ্রত্যাশিত ত্রুটি ঘটেছে' };
+    }
+  },
+
+  /**
+   * Helper for Admin: Create a Course Exam and insert all its questions in 'questions' table
+   * with exam_id = newExam.id
+   */
+  async createCourseExamWithQuestions(examData: {
+    courseId: string;
+    title: string;
+    subject?: string;
+    examNumber?: string;
+    durationMinutes?: number;
+    negativeMarking?: number;
+    questions: Array<{
+      question: string;
+      arabicQuestion?: string;
+      options: string[];
+      correctIndex: number;
+      explanation?: string;
+    }>;
+  }): Promise<{ success: boolean; examId?: string; message: string }> {
+    const supabase = getSupabase();
+    if (!supabase) return { success: false, message: 'Supabase কানেক্টেড নয়।' };
+
+    try {
+      // 1. Insert into course_exams table
+      const { data: newExam, error: examError } = await supabase
+        .from('course_exams')
+        .insert({
+          course_id: examData.courseId,
+          title: examData.title,
+          subject: examData.subject || examData.title,
+          exam_number: examData.examNumber || 'পরীক্ষা ০১',
+          total_marks: examData.questions.length,
+          duration_minutes: examData.durationMinutes || 30,
+          negative_marking: examData.negativeMarking ?? 0.25,
+          total_questions: examData.questions.length,
+          status: 'running',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (examError || !newExam) {
+        return { success: false, message: `কোর্স পরীক্ষা তৈরিতে ব্যর্থ: ${examError?.message || 'অজানা ত্রুটি'}` };
+      }
+
+      const courseExamId = String(newExam.id);
+
+      // 2. Prepare questions with exam_id
+      const formattedQuestions = examData.questions.map((q) => ({
+        exam_id: courseExamId,
+        question_text: q.question,
+        arabic_question: q.arabicQuestion || null,
+        options: q.options,
+        correct_index: q.correctIndex,
+        explanation: q.explanation || '',
+        subject: examData.subject || examData.title,
+        created_at: new Date().toISOString()
+      }));
+
+      // 3. Insert questions into 'questions' table
+      const { error: qError } = await supabase
+        .from('questions')
+        .insert(formattedQuestions);
+
+      if (qError) {
+        return { 
+          success: false, 
+          examId: courseExamId, 
+          message: `পরীক্ষা যুক্ত হয়েছে কিন্তু প্রশ্নে ত্রুটি: ${qError.message}` 
+        };
+      }
+
+      return { success: true, examId: courseExamId, message: 'কোর্স পরীক্ষা ও প্রশ্ন সফলভাবে তৈরি হয়েছে!' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'অপ্রত্যাশিত ত্রুটি ঘটেছে' };
+    }
+  },
+
   // ==========================================
-  // 3. PROFILES & USER DATA
+  // 3. PROFILES & USER AUTHENTICATION
   // ==========================================
+
+  /**
+   * Normalize email or phone number for Supabase authentication
+   */
+  normalizeIdentifier(rawIdentifier: string): { authEmail: string; isEmail: boolean; phone: string; displayIdentifier: string } {
+    const trimmed = String(rawIdentifier || '').trim();
+    // Convert Bengali numerals to English if any
+    const converted = trimmed.replace(/[০-৯]/g, (d) => String('০১২৩৪৫৬৭৮৯'.indexOf(d)));
+
+    if (converted.includes('@')) {
+      return {
+        authEmail: converted.toLowerCase(),
+        isEmail: true,
+        phone: '',
+        displayIdentifier: converted.toLowerCase()
+      };
+    }
+
+    // Extract digits for phone numbers
+    const digitsOnly = converted.replace(/[^0-9]/g, '');
+    let normalizedPhone = digitsOnly;
+    if (normalizedPhone.startsWith('880')) {
+      normalizedPhone = '0' + normalizedPhone.substring(3);
+    } else if (normalizedPhone.startsWith('88') && normalizedPhone.length > 11) {
+      normalizedPhone = normalizedPhone.substring(2);
+    }
+
+    const authEmail = normalizedPhone ? `phone_${normalizedPhone}@tamreen.academy` : `user_${Date.now()}@tamreen.academy`;
+
+    return {
+      authEmail: authEmail.toLowerCase(),
+      isEmail: false,
+      phone: normalizedPhone,
+      displayIdentifier: normalizedPhone || converted
+    };
+  },
+
+  /**
+   * User Registration (Email or Phone + Password)
+   */
+  async registerUser(params: {
+    name: string;
+    identifier: string;
+    password: string;
+    institution?: string;
+  }): Promise<{ success: boolean; message: string; user?: UserProfile; userId?: string }> {
+    const { name, identifier, password, institution } = params;
+    const cleanName = name.trim();
+    const { authEmail, isEmail, phone, displayIdentifier } = this.normalizeIdentifier(identifier);
+
+    if (!cleanName) {
+      return { success: false, message: 'অনুগ্রহ করে আপনার নাম প্রদান করুন।' };
+    }
+    if (!displayIdentifier) {
+      return { success: false, message: 'সঠিক ইমেইল অথবা মোবাইল নম্বর প্রদান করুন।' };
+    }
+    if (!password || password.length < 6) {
+      return { success: false, message: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' };
+    }
+
+    const supabase = getSupabase();
+
+    // 1. Try Supabase Auth if connected
+    if (supabase) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: authEmail,
+          password: password,
+          options: {
+            data: {
+              name: cleanName,
+              phone: phone,
+              institution: institution || 'মাদ্রাসা / কলেজ',
+              display_identifier: displayIdentifier
+            }
+          }
+        });
+
+        if (authError) {
+          if (authError.message.includes('already registered') || authError.message.includes('unique constraint')) {
+            return { success: false, message: 'এই ইমেইল বা মোবাইল নম্বরে ইতোমধ্যে একাউন্ট খোলা আছে। অনুগ্রহ করে লগইন করুন।' };
+          }
+          console.warn('Supabase auth signUp error:', authError.message);
+        }
+
+        const userId = authData?.user?.id || `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+        const profileData: UserProfile = {
+          id: userId,
+          name: cleanName,
+          email: isEmail ? displayIdentifier : '',
+          phone: phone || (!isEmail ? displayIdentifier : ''),
+          rollNo: `TAM-${Math.floor(1000 + Math.random() * 9000)}`,
+          institution: institution || 'মাদ্রাসা / কলেজ',
+          targetExam: '১৯তম শিক্ষক নিবন্ধন ও মডেল টেস্ট',
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`,
+          bio: 'জ্ঞান ও সাধনার মাধ্যমে অভীষ্ট লক্ষ্যে পৌঁছানোই ব্রত।',
+          district: 'ঢাকা',
+          batchTag: 'রেজিস্টার্ড শিক্ষার্থী',
+          joinDate: new Date().toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' }),
+          dailyGoalQuestions: 30,
+          studyStreakDays: 1,
+          totalPoints: 50,
+          isPremium: false
+        };
+
+        // Try writing profile to profiles table
+        try {
+          await supabase.from('profiles').upsert({
+            id: userId,
+            name: cleanName,
+            email: profileData.email,
+            phone: profileData.phone,
+            institution: profileData.institution,
+            avatar_url: profileData.avatar,
+            target_exam: profileData.targetExam,
+            bio: profileData.bio,
+            district: profileData.district,
+            roll_no: profileData.rollNo,
+            updated_at: new Date().toISOString()
+          });
+        } catch {}
+
+        // Save local session cache
+        localStorage.setItem('tamreen_auth_uid', userId);
+        localStorage.setItem('tamreen_is_logged_in', 'true');
+        localStorage.setItem('tamreen_user_profile', JSON.stringify(profileData));
+
+        return {
+          success: true,
+          message: 'অভিনন্দন! আপনার একাউন্ট সফলভাবে তৈরি হয়েছে।',
+          user: profileData,
+          userId
+        };
+      } catch (err: any) {
+        console.warn('Supabase registration error:', err);
+      }
+    }
+
+    // 2. Offline / Local fallback user creation
+    const localUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const localProfile: UserProfile = {
+      id: localUserId,
+      name: cleanName,
+      email: isEmail ? displayIdentifier : '',
+      phone: phone || (!isEmail ? displayIdentifier : ''),
+      rollNo: `TAM-${Math.floor(1000 + Math.random() * 9000)}`,
+      institution: institution || 'মাদ্রাসা / কলেজ',
+      targetExam: '১৯তম শিক্ষক নিবন্ধন ও মডেল টেস্ট',
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`,
+      bio: 'জ্ঞান ও সাধনার মাধ্যমে অভীষ্ট লক্ষ্যে পৌঁছানোই ব্রত।',
+      district: 'ঢাকা',
+      batchTag: 'রেজিস্টার্ড শিক্ষার্থী',
+      joinDate: new Date().toLocaleDateString('bn-BD', { month: 'long', year: 'numeric' }),
+      dailyGoalQuestions: 30,
+      studyStreakDays: 1,
+      totalPoints: 50,
+      isPremium: false
+    };
+
+    // Store in local users registry for offline login
+    try {
+      const storedUsers = JSON.parse(localStorage.getItem('tamreen_local_users') || '[]');
+      storedUsers.push({
+        id: localUserId,
+        identifier: displayIdentifier.toLowerCase(),
+        authEmail: authEmail.toLowerCase(),
+        password: password,
+        profile: localProfile
+      });
+      localStorage.setItem('tamreen_local_users', JSON.stringify(storedUsers));
+    } catch {}
+
+    localStorage.setItem('tamreen_auth_uid', localUserId);
+    localStorage.setItem('tamreen_is_logged_in', 'true');
+    localStorage.setItem('tamreen_user_profile', JSON.stringify(localProfile));
+
+    return {
+      success: true,
+      message: 'আপনার একাউন্ট সফলভাবে তৈরি হয়েছে!',
+      user: localProfile,
+      userId: localUserId
+    };
+  },
+
+  /**
+   * User Login (Email or Phone + Password)
+   */
+  async loginUser(params: {
+    identifier: string;
+    password: string;
+  }): Promise<{ success: boolean; message: string; user?: UserProfile; userId?: string }> {
+    const { identifier, password } = params;
+    const { authEmail, isEmail, phone, displayIdentifier } = this.normalizeIdentifier(identifier);
+
+    if (!displayIdentifier) {
+      return { success: false, message: 'ইমেইল অথবা মোবাইল নম্বর প্রদান করুন।' };
+    }
+    if (!password) {
+      return { success: false, message: 'পাসওয়ার্ড প্রদান করুন।' };
+    }
+
+    const supabase = getSupabase();
+
+    // 1. Try Supabase Auth
+    if (supabase) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: password
+        });
+
+        if (!authError && authData?.user) {
+          const userId = authData.user.id;
+          let profile = await this.getProfile(userId);
+
+          if (!profile) {
+            const userMeta = authData.user.user_metadata || {};
+            profile = {
+              id: userId,
+              name: userMeta.name || 'মুহাম্মদ শিক্ষার্থী',
+              email: isEmail ? displayIdentifier : (authData.user.email || ''),
+              phone: phone || userMeta.phone || '',
+              rollNo: `TAM-${Math.floor(1000 + Math.random() * 9000)}`,
+              institution: userMeta.institution || 'মাদ্রাসা / কলেজ',
+              targetExam: '১৯তম শিক্ষক নিবন্ধন ও মডেল টেস্ট',
+              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(userMeta.name || userId)}`,
+              bio: '',
+              district: 'ঢাকা',
+              batchTag: 'রেজিস্টার্ড শিক্ষার্থী',
+              dailyGoalQuestions: 30,
+              studyStreakDays: 1,
+              totalPoints: 100,
+              isPremium: false
+            };
+          }
+
+          localStorage.setItem('tamreen_auth_uid', userId);
+          localStorage.setItem('tamreen_is_logged_in', 'true');
+          localStorage.setItem('tamreen_user_profile', JSON.stringify(profile));
+
+          return {
+            success: true,
+            message: `স্বাগতম, ${profile.name}! লগইন সফল হয়েছে।`,
+            user: profile,
+            userId
+          };
+        }
+      } catch (err) {
+        console.warn('Supabase signIn exception:', err);
+      }
+    }
+
+    // 2. Local users registry check (for offline/local testing)
+    try {
+      const storedUsers = JSON.parse(localStorage.getItem('tamreen_local_users') || '[]');
+      const match = storedUsers.find((u: any) => 
+        (u.identifier === displayIdentifier.toLowerCase() || u.authEmail === authEmail.toLowerCase()) && 
+        u.password === password
+      );
+
+      if (match) {
+        localStorage.setItem('tamreen_auth_uid', match.id);
+        localStorage.setItem('tamreen_is_logged_in', 'true');
+        localStorage.setItem('tamreen_user_profile', JSON.stringify(match.profile));
+
+        return {
+          success: true,
+          message: `স্বাগতম, ${match.profile.name}! লগইন সফল হয়েছে।`,
+          user: match.profile,
+          userId: match.id
+        };
+      }
+    } catch {}
+
+    // 3. Fallback: If user had an existing stored profile with matching identifier or fresh login
+    const localProfileStr = localStorage.getItem('tamreen_user_profile');
+    if (localProfileStr) {
+      try {
+        const saved = JSON.parse(localProfileStr);
+        if (saved && (saved.email === displayIdentifier || saved.phone === displayIdentifier || !saved.email)) {
+          localStorage.setItem('tamreen_is_logged_in', 'true');
+          return {
+            success: true,
+            message: `স্বাগতম, ${saved.name}! লগইন সফল হয়েছে।`,
+            user: saved,
+            userId: saved.id || 'usr_local'
+          };
+        }
+      } catch {}
+    }
+
+    return {
+      success: false,
+      message: 'ইমেইল/মোবাইল নম্বর অথবা পাসওয়ার্ড সঠিক নয়। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'
+    };
+  },
+
+  /**
+   * Log out user
+   */
+  async logoutUser(): Promise<void> {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
+    }
+    localStorage.removeItem('tamreen_is_logged_in');
+    localStorage.removeItem('tamreen_auth_uid');
+  },
 
   /**
    * Fetch User Profile from 'profiles' table
@@ -803,11 +1345,11 @@ export const supabaseService = {
 
       return {
         id: data.id,
-        name: data.name || data.full_name || 'মুহাম্মদ আব্দুল্লাহ',
+        name: data.name || data.full_name || 'মুহাম্মদ শিক্ষার্থী',
         phone: data.phone || '',
         email: data.email || '',
         rollNo: data.roll_no || data.rollNo || '',
-        institution: data.institution || 'মাদ্রাসা',
+        institution: data.institution || 'মাদ্রাসা / কলেজ',
         targetExam: data.target_exam || data.targetExam || '',
         avatar: data.avatar_url || data.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
         bio: data.bio || '',
@@ -1054,6 +1596,9 @@ export const supabaseService = {
     examId: string;
     courseId?: string;
     examTitle?: string;
+    userName?: string;
+    institution?: string;
+    phone?: string;
     score: number;
     totalMarks: number;
     correctAnswers: number;
@@ -1066,25 +1611,38 @@ export const supabaseService = {
     if (!supabase) return { success: true };
 
     try {
+      const payload: any = {
+        user_id: data.userId,
+        exam_id: data.examId,
+        course_id: data.courseId || null,
+        exam_title: data.examTitle || null,
+        user_name: data.userName || null,
+        institution: data.institution || null,
+        score: data.score,
+        total_marks: data.totalMarks,
+        correct_answers: data.correctAnswers,
+        wrong_answers: data.wrongAnswers,
+        skipped_answers: data.skippedAnswers,
+        time_taken_seconds: data.timeSpentSeconds,
+        user_answers: data.userAnswers || null,
+        submitted_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('exam_results')
-        .insert({
-          user_id: data.userId,
-          exam_id: data.examId,
-          course_id: data.courseId || null,
-          score: data.score,
-          total_marks: data.totalMarks,
-          correct_answers: data.correctAnswers,
-          wrong_answers: data.wrongAnswers,
-          skipped_answers: data.skippedAnswers,
-          time_taken_seconds: data.timeSpentSeconds,
-          user_answers: data.userAnswers || null,
-          submitted_at: new Date().toISOString()
-        });
+        .insert(payload);
 
       if (error) {
         console.warn('Supabase insert exam result notice:', error.message);
       }
+
+      // Also attempt to increment participants count in free_exams / course_exams
+      try {
+        if (!data.courseId) {
+          await supabase.rpc('increment_free_exam_participants', { x_id: data.examId });
+        }
+      } catch {}
+
       return { success: !error };
     } catch (err) {
       console.warn('Exception submitting exam result:', err);
@@ -1104,6 +1662,33 @@ export const supabaseService = {
     if (!supabase) return [];
 
     try {
+      // 1. First check if results exist in exam_results for this specific exam/course
+      if (courseOrExamId) {
+        const { data: resultsData, error: rErr } = await supabase
+          .from('exam_results')
+          .select('*')
+          .or(`exam_id.eq.${courseOrExamId},course_id.eq.${courseOrExamId}`)
+          .order('score', { ascending: false })
+          .order('time_taken_seconds', { ascending: true })
+          .limit(50);
+
+        if (!rErr && resultsData && resultsData.length > 0) {
+          return resultsData.map((r: any, idx: number) => ({
+            id: String(r.id),
+            rank: idx + 1,
+            name: r.user_name || r.name || 'পরীক্ষার্থী',
+            avatar: r.avatar || r.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.user_name || r.user_id || idx)}`,
+            institution: r.institution || 'মাদ্রাসা / কলেজ',
+            correctAnswers: Number(r.correct_answers || 0),
+            wrongAnswers: Number(r.wrong_answers || 0),
+            score: Number(r.score || 0),
+            totalMarks: Number(r.total_marks || 100),
+            timeSpentSeconds: Number(r.time_taken_seconds || r.time_spent_seconds || 1200)
+          }));
+        }
+      }
+
+      // 2. Fallback to course_leaderboard view
       let query = supabase.from('course_leaderboard').select('*');
       if (courseOrExamId) {
         query = query.eq('course_id', courseOrExamId);
@@ -1114,36 +1699,14 @@ export const supabaseService = {
         return data.map((item: any, idx: number) => ({
           id: String(item.id || item.user_id || idx),
           rank: Number(item.rank || idx + 1),
-          name: item.name || item.user_name || 'শিক্ষার্থী',
-          avatar: item.avatar || item.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-          institution: item.institution || 'মাদ্রাসা',
+          name: item.name || item.user_name || 'পরীক্ষার্থী',
+          avatar: item.avatar || item.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(item.name || idx)}`,
+          institution: item.institution || 'মাদ্রাসা / কলেজ',
           correctAnswers: Number(item.correct_answers || 0),
           wrongAnswers: Number(item.wrong_answers || 0),
           score: Number(item.score || 0),
           totalMarks: Number(item.total_marks || 100),
           timeSpentSeconds: Number(item.time_taken_seconds || item.time_spent_seconds || 1200)
-        }));
-      }
-
-      // Fallback query to exam_results if view is empty or filtered
-      let resultsQuery = supabase.from('exam_results').select('*');
-      if (courseOrExamId) {
-        resultsQuery = resultsQuery.or(`exam_id.eq.${courseOrExamId},course_id.eq.${courseOrExamId}`);
-      }
-      const { data: resultsData } = await resultsQuery.order('score', { ascending: false }).limit(50);
-
-      if (resultsData && resultsData.length > 0) {
-        return resultsData.map((r: any, idx: number) => ({
-          id: String(r.id),
-          rank: idx + 1,
-          name: r.user_name || 'শিক্ষার্থী',
-          avatar: r.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-          institution: r.institution || 'মাদ্রাসা',
-          correctAnswers: Number(r.correct_answers || 0),
-          wrongAnswers: Number(r.wrong_answers || 0),
-          score: Number(r.score || 0),
-          totalMarks: Number(r.total_marks || 100),
-          timeSpentSeconds: Number(r.time_taken_seconds || r.time_spent_seconds || 1200)
         }));
       }
 

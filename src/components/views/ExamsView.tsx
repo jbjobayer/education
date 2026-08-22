@@ -23,12 +23,22 @@ import {
 import { Exam } from '../../types';
 
 export const ExamsView: React.FC = () => {
-  const { exams, startExam, examResults, setViewingResult, setResultSubTab, refreshFromDatabase, isLoadingData, showToast } = useApp();
+  const { 
+    exams, 
+    startExam, 
+    openExamLanding, 
+    shareExam, 
+    examResults, 
+    setViewingResult, 
+    setResultSubTab, 
+    refreshFromDatabase, 
+    isLoadingData, 
+    showToast 
+  } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'free'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'participants' | 'marks'>('latest');
-  const [shareToast, setShareToast] = useState<string | null>(null);
 
   // Subject list extracted from exams
   const subjects = useMemo(() => {
@@ -38,20 +48,6 @@ export const ExamsView: React.FC = () => {
     });
     return Array.from(set);
   }, [exams]);
-
-  const handleShare = (examTitle: string) => {
-    if (navigator.share) {
-      navigator.share({
-        title: examTitle,
-        text: `আত-তামরীন একাডেমিতে '${examTitle}' ওএমআর পরীক্ষায় অংশ নিন!`,
-        url: window.location.href,
-      }).catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(window.location.href);
-      setShareToast(`'${examTitle}' লিংক কপি করা হয়েছে!`);
-      setTimeout(() => setShareToast(null), 2500);
-    }
-  };
 
   const filteredExams = useMemo(() => {
     return exams.filter((exam) => {
@@ -89,13 +85,6 @@ export const ExamsView: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-24 animate-fadeIn">
-      {/* Toast Notification */}
-      {shareToast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#004d2e] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xl border border-emerald-400/40 animate-bounce">
-          {shareToast}
-        </div>
-      )}
-
       {/* 1. Deep Green Hero Card (Matching Screenshot 1) */}
       <div className="bg-gradient-to-b from-[#023b24] via-[#004d2e] to-[#013821] text-white rounded-3xl p-5 sm:p-7 shadow-lg relative overflow-hidden text-center">
         {/* Subtle Decorative Elements */}
@@ -300,8 +289,8 @@ export const ExamsView: React.FC = () => {
                     </span>
 
                     <button
-                      onClick={() => handleShare(exam.title)}
-                      className="bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60 transition-colors"
+                      onClick={() => shareExam(exam)}
+                      className="bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60 transition-colors cursor-pointer"
                     >
                       <Share2 className="w-3 h-3" />
                       <span>শেয়ার</span>
@@ -310,8 +299,11 @@ export const ExamsView: React.FC = () => {
                 </div>
 
                 {/* Exam Title */}
-                <div>
-                  <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-slate-100 leading-snug">
+                <div 
+                  onClick={() => openExamLanding(exam)}
+                  className="cursor-pointer group"
+                >
+                  <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-slate-100 leading-snug group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                     {exam.title}
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium mt-0.5">
@@ -378,7 +370,7 @@ export const ExamsView: React.FC = () => {
                     </div>
                   ) : (
                     <button
-                      onClick={() => startExam(exam)}
+                      onClick={() => openExamLanding(exam)}
                       className="w-full py-3 rounded-2xl bg-[#004d2e] hover:bg-[#003822] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer"
                     >
                       <Play className="w-4 h-4 fill-white" />

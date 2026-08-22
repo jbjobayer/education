@@ -21,6 +21,7 @@ import { CircularsView } from './components/views/CircularsView';
 import { SubjectWiseView } from './components/views/SubjectWiseView';
 import { ResultView } from './components/views/ResultView';
 import { CourseDetailsView } from './components/views/CourseDetailsView';
+import { ExamLandingView } from './components/views/ExamLandingView';
 
 // Modals & Drawers
 import { CheckoutDrawer } from './components/modals/CheckoutDrawer';
@@ -28,9 +29,18 @@ import { ExamModal } from './components/modals/ExamModal';
 import { RoutineModal } from './components/modals/RoutineModal';
 import { NotificationDrawer } from './components/modals/NotificationDrawer';
 import { FontSettingsModal } from './components/modals/FontSettingsModal';
+import { AuthModal } from './components/modals/AuthModal';
 
 const MainContent: React.FC = () => {
-  const { activeTab, viewingResult, selectedCourseDetails } = useApp();
+  const { 
+    activeTab, 
+    viewingResult, 
+    selectedCourseDetails, 
+    landingExam,
+    isAuthModalOpen,
+    setIsAuthModalOpen,
+    authModalMode
+  } = useApp();
 
   return (
     <div className="min-h-screen bg-[#e9edf5] dark:bg-[#0d1522] text-slate-800 dark:text-slate-100 flex flex-col justify-between selection:bg-emerald-600 selection:text-white transition-colors duration-200">
@@ -42,6 +52,8 @@ const MainContent: React.FC = () => {
         {/* If viewing a completed exam result, render as a dedicated inline page (No popup) */}
         {viewingResult ? (
           <ResultView />
+        ) : landingExam ? (
+          <ExamLandingView />
         ) : selectedCourseDetails ? (
           <CourseDetailsView />
         ) : (
@@ -66,6 +78,11 @@ const MainContent: React.FC = () => {
       <RoutineModal />
       <NotificationDrawer />
       <FontSettingsModal />
+      <AuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+      />
       <Toast />
     </div>
   );

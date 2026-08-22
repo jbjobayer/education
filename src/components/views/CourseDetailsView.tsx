@@ -43,6 +43,7 @@ export const CourseDetailsView: React.FC = () => {
     pendingEnrollmentIds,
     setCheckoutCourse,
     startExam,
+    openExamLanding,
     setViewingResult,
     showToast,
     userProfile,
@@ -231,7 +232,7 @@ export const CourseDetailsView: React.FC = () => {
       courseId: course.id,
       dateStr: examItem.dateStr
     };
-    startExam(customExam);
+    openExamLanding(customExam);
   };
 
   // Handler for viewing answer sheet

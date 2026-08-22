@@ -33,7 +33,7 @@ interface AppContextType {
   checkoutCourse: Course | null;
   setCheckoutCourse: (course: Course | null) => void;
   activeExam: Exam | null;
-  startExam: (exam: Exam) => void;
+  startExam: (exam: Exam, participant?: { name?: string; institution?: string; phone?: string }) => void;
   closeExam: () => void;
   saveExamResult: (result: ExamResult) => void;
   examResults: ExamResult[];
@@ -58,6 +58,21 @@ interface AppContextType {
   isSupabaseConnected: boolean;
   refreshFromDatabase: () => Promise<void>;
   isLoadingData: boolean;
+  landingExam: Exam | null;
+  setLandingExam: (exam: Exam | null) => void;
+  openExamLanding: (examOrId: Exam | string) => Promise<void>;
+  shareExam: (exam: Exam) => void;
+  participantInfo: { name: string; institution: string; phone: string };
+  setParticipantInfo: (info: { name: string; institution: string; phone: string }) => void;
+  isLoggedIn: boolean;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+  authModalMode: 'login' | 'register';
+  setAuthModalMode: (mode: 'login' | 'register') => void;
+  openAuthModal: (mode?: 'login' | 'register') => void;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; message: string }>;
+  register: (name: string, identifier: string, password: string, institution?: string) => Promise<{ success: boolean; message: string }>;
+  logout: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -71,6 +86,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [routines, setRoutines] = useState<RoutineItem[]>(mockRoutines);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
+
+  // Authentication states
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tamreen_is_logged_in') === 'true';
+    }
+    return false;
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
+  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
+  };
   
   // Track user enrollments dictionary: { [courseId]: 'pending' | 'approved' | 'rejected' }
   const [userEnrollments, setUserEnrollments] = useState<Record<string, EnrollmentStatus>>(() => {
@@ -85,6 +115,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const pendingEnrollmentIds = Object.keys(userEnrollments).filter(
     (id) => userEnrollments[id] === 'pending'
   );
+
+  const [landingExam, setLandingExam] = useState<Exam | null>(null);
+  const [participantInfo, setParticipantInfo] = useState<{ name: string; institution: string; phone: string }>(() => {
+    return {
+      name: localStorage.getItem('tamreen_guest_name') || '',
+      institution: localStorage.getItem('tamreen_guest_institution') || '',
+      phone: localStorage.getItem('tamreen_guest_phone') || ''
+    };
+  });
 
   const [activeExam, setActiveExam] = useState<Exam | null>(null);
   const [examResults, setExamResults] = useState<ExamResult[]>(() => {
@@ -143,6 +182,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setToastMessage(null);
     }, 3500);
   };
+
+  const openExamLanding = async (examOrId: Exam | string) => {
+    if (typeof examOrId === 'object' && examOrId !== null) {
+      setLandingExam(examOrId);
+      setActiveTab('exams');
+      if (window.history.pushState) {
+        const newUrl = `${window.location.pathname}?exam=${examOrId.id}`;
+        window.history.pushState({ path: newUrl }, '', newUrl);
+      }
+      return;
+    }
+
+    const examId = String(examOrId);
+    // First search in local exams
+    const localExam = exams.find((e) => e.id === examId);
+    if (localExam) {
+      setLandingExam(localExam);
+      setActiveTab('exams');
+      return;
+    }
+
+    // Fetch from Supabase
+    setIsLoadingData(true);
+    try {
+      const fetched = await supabaseService.getExamById(examId);
+      if (fetched) {
+        setLandingExam(fetched);
+        setActiveTab('exams');
+      } else {
+        showToast('দুঃখিত, পরীক্ষাটি খুঁজে পাওয়া যায়নি', 'error');
+      }
+    } catch {
+      showToast('পরীক্ষা লোড করতে সমস্যা হয়েছে', 'error');
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const shareExam = (exam: Exam) => {
+    const origin = window.location.origin || '';
+    const pathname = window.location.pathname || '/';
+    const shareUrl = `${origin}${pathname}?exam=${exam.id}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `${exam.title} - আত-তামরীন একাডেমি`,
+        text: `আত-তামরীন একাডেমিতে '${exam.title}' ওএমআর পরীক্ষায় অংশ নিয়ে আপনার প্রস্তুতি যাচাই করুন!`,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(shareUrl);
+      showToast(`'${exam.title}' পরীক্ষার সরাসরি লিংক কপি করা হয়েছে!`, 'success');
+    }
+  };
+
+  // Check URL deep links on mount and popstate (e.g. ?exam=123 or ?free_exam=123)
+  useEffect(() => {
+    const checkUrlParams = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const examId = params.get('exam') || params.get('free_exam') || params.get('model_test') || params.get('examId');
+        if (examId) {
+          openExamLanding(examId);
+        }
+      } catch (e) {
+        console.warn('Failed to parse URL query:', e);
+      }
+    };
+
+    checkUrlParams();
+    window.addEventListener('popstate', checkUrlParams);
+    return () => window.removeEventListener('popstate', checkUrlParams);
+  }, []);
 
   const refreshFromDatabase = async () => {
     setIsLoadingData(true);
@@ -295,7 +407,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const startExam = (exam: Exam) => {
+  const login = async (identifier: string, pass: string): Promise<{ success: boolean; message: string }> => {
+    const res = await supabaseService.loginUser({ identifier, password: pass });
+    if (res.success && res.user) {
+      setIsLoggedIn(true);
+      setUserProfile(res.user);
+      localStorage.setItem('tamreen_is_logged_in', 'true');
+      localStorage.setItem('tamreen_user_profile', JSON.stringify(res.user));
+    }
+    return { success: res.success, message: res.message };
+  };
+
+  const register = async (name: string, identifier: string, pass: string, inst?: string): Promise<{ success: boolean; message: string }> => {
+    const res = await supabaseService.registerUser({ name, identifier, password: pass, institution: inst });
+    if (res.success && res.user) {
+      setIsLoggedIn(true);
+      setUserProfile(res.user);
+      localStorage.setItem('tamreen_is_logged_in', 'true');
+      localStorage.setItem('tamreen_user_profile', JSON.stringify(res.user));
+    }
+    return { success: res.success, message: res.message };
+  };
+
+  const logout = async () => {
+    await supabaseService.logoutUser();
+    setIsLoggedIn(false);
+    localStorage.removeItem('tamreen_is_logged_in');
+    showToast('সফলভাবে লগআউট সম্পন্ন হয়েছে', 'info');
+  };
+
+  const startExam = (exam: Exam, participant?: { name?: string; institution?: string; phone?: string }) => {
+    const activeName = (isLoggedIn && userProfile.name) ? userProfile.name : (participant?.name || participantInfo.name || 'শিক্ষার্থী');
+    const activeInstitution = (isLoggedIn && userProfile.institution) ? userProfile.institution : (participant?.institution || participantInfo.institution || '');
+    const activePhone = (isLoggedIn && userProfile.phone) ? userProfile.phone : (participant?.phone || participantInfo.phone || '');
+
+    setParticipantInfo({
+      name: activeName,
+      institution: activeInstitution,
+      phone: activePhone
+    });
     setActiveExam(exam);
   };
 
@@ -304,27 +454,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveExamResult = async (result: ExamResult) => {
-    const newResults = [result, ...examResults];
+    const finalParticipantName = (isLoggedIn && userProfile.name) ? userProfile.name : (result.participantName || participantInfo.name || 'শিক্ষার্থী');
+    const finalParticipantInstitution = (isLoggedIn && userProfile.institution) ? userProfile.institution : (result.participantInstitution || participantInfo.institution || '');
+    const finalParticipantPhone = (isLoggedIn && userProfile.phone) ? userProfile.phone : (result.participantPhone || participantInfo.phone || '');
+
+    const enrichedResult: ExamResult = {
+      ...result,
+      participantName: finalParticipantName,
+      participantInstitution: finalParticipantInstitution,
+      participantPhone: finalParticipantPhone
+    };
+
+    const newResults = [enrichedResult, ...examResults];
     setExamResults(newResults);
     localStorage.setItem('tamreen_results', JSON.stringify(newResults));
-    setViewingResult(result);
+    setViewingResult(enrichedResult);
     showToast('পরীক্ষা সফলভাবে সম্পন্ন হয়েছে!', 'success');
 
-    // Submit to Supabase
+    // Submit to Supabase with custom participant details
     try {
       const userId = await getCurrentUserId();
       await supabaseService.submitExamResult({
         userId,
-        examId: result.examId,
-        courseId: result.courseId,
-        examTitle: result.examTitle,
-        score: result.score,
-        totalMarks: result.totalMarks,
-        correctAnswers: result.correctAnswers,
-        wrongAnswers: result.wrongAnswers,
-        skippedAnswers: result.skippedAnswers,
-        timeSpentSeconds: result.timeSpentSeconds,
-        userAnswers: result.userAnswers
+        examId: enrichedResult.examId,
+        courseId: enrichedResult.courseId,
+        examTitle: enrichedResult.examTitle,
+        score: enrichedResult.score,
+        totalMarks: enrichedResult.totalMarks,
+        correctAnswers: enrichedResult.correctAnswers,
+        wrongAnswers: enrichedResult.wrongAnswers,
+        skippedAnswers: enrichedResult.skippedAnswers,
+        timeSpentSeconds: enrichedResult.timeSpentSeconds,
+        userAnswers: enrichedResult.userAnswers,
+        userName: finalParticipantName,
+        institution: finalParticipantInstitution,
+        phone: finalParticipantPhone
       });
     } catch {
       // Background submit
@@ -384,6 +548,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`অভিনন্দন! আপনার ${planName} সাবস্ক্রিপশন সফলভাবে সক্রিয় হয়েছে।`, 'success');
   };
 
+  // Initial auth sync with Supabase
+  useEffect(() => {
+    const syncAuth = async () => {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data?.session?.user) {
+            setIsLoggedIn(true);
+            localStorage.setItem('tamreen_is_logged_in', 'true');
+            const p = await supabaseService.getProfile(data.session.user.id);
+            if (p) {
+              setUserProfile(p);
+              localStorage.setItem('tamreen_user_profile', JSON.stringify(p));
+            }
+          }
+        } catch {}
+      }
+    };
+    syncAuth();
+  }, [isSupabaseConnected]);
+
   const isPremiumMember = Boolean(userProfile.isPremium || userProfile.subscriptionPlanId);
 
   return (
@@ -431,6 +617,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSupabaseConnected,
         refreshFromDatabase,
         isLoadingData,
+        landingExam,
+        setLandingExam,
+        openExamLanding,
+        shareExam,
+        participantInfo,
+        setParticipantInfo,
+        isLoggedIn,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        authModalMode,
+        setAuthModalMode,
+        openAuthModal,
+        login,
+        register,
+        logout,
       }}
     >
       {children}

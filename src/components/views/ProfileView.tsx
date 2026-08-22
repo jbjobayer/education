@@ -52,7 +52,9 @@ import {
   Database,
   Server,
   Radio,
-  Lock
+  Lock,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { mockQuestions } from '../../data/mockData';
 import { useFont, BanglaFont, ArabicFont } from '../../context/FontContext';
@@ -98,7 +100,10 @@ export const ProfileView: React.FC = () => {
     showToast,
     isSupabaseConnected,
     refreshFromDatabase,
-    isLoadingData
+    isLoadingData,
+    isLoggedIn,
+    openAuthModal,
+    logout
   } = useApp();
 
   const { 
@@ -638,6 +643,53 @@ export const ProfileView: React.FC = () => {
               <ChevronRight className="w-5 h-5" />
             </div>
           </div>
+
+          {/* 10. একাউন্ট অথেনটিকেশন / লগআউট বা লগইন বাটন */}
+          {isLoggedIn ? (
+            <div 
+              onClick={logout}
+              className="w-full bg-rose-50/70 hover:bg-rose-100/80 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-rose-200/80 dark:border-rose-800/60 shadow-[0_2px_8px_rgba(225,29,72,0.04)] flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-xs">
+                  <LogOut className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-sm sm:text-base text-rose-700 dark:text-rose-400">
+                    একাউন্ট থেকে লগআউট
+                  </h3>
+                  <p className="text-xs text-rose-600/80 dark:text-rose-400/80 truncate">
+                    বর্তমান সেশন সমাপ্ত করতে ক্লিক করুন
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-rose-400">
+                <LogOut className="w-4 h-4" />
+              </div>
+            </div>
+          ) : (
+            <div 
+              onClick={() => openAuthModal('login')}
+              className="w-full bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-emerald-900/50 dark:hover:to-teal-900/40 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-emerald-300 dark:border-emerald-700/60 shadow-[0_2px_8px_rgba(0,90,54,0.06)] flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <LogIn className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-sm sm:text-base text-emerald-800 dark:text-emerald-300">
+                    লগইন বা নতুন একাউন্ট তৈরি করুন
+                  </h3>
+                  <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 truncate">
+                    ইমেইল বা মোবাইল নাম্বার দিয়ে একাউন্ট সুরক্ষিত রাখুন
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <ChevronRight className="w-5 h-5" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
