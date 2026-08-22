@@ -47,6 +47,8 @@ import {
   History,
   ArrowLeft,
   GraduationCap,
+  School,
+  MapPin,
   Sliders,
   Check,
   Database,
@@ -137,6 +139,22 @@ export const ProfileView: React.FC = () => {
   const [editDistrict, setEditDistrict] = useState(userProfile.district || 'ঢাকা');
   const [editBio, setEditBio] = useState(userProfile.bio || 'পরিশ্রম ও নিয়মানুবর্তিতার মাধ্যমে ১৯তম শিক্ষক নিবন্ধনে প্রথম সারিতে উত্তীর্ণ হওয়াই মূল লক্ষ্য। ইনশাআল্লাহ!');
   const [editBatchTag, setEditBatchTag] = useState(userProfile.batchTag || 'সহকারী শিক্ষক (আরবি)');
+
+  // Clean Student Display Name (ensures name is shown, never raw email in header)
+  const displayName = useMemo(() => {
+    if (userProfile.name && userProfile.name.trim().length > 0 && !userProfile.name.includes('@')) {
+      return userProfile.name.trim();
+    }
+    if (userProfile.name && userProfile.name.includes('@')) {
+      const prefix = userProfile.name.split('@')[0];
+      return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+    if (userProfile.email && userProfile.email.includes('@')) {
+      const prefix = userProfile.email.split('@')[0];
+      return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+    return 'মুহাম্মদ জোবায়ের হোসাইন';
+  }, [userProfile.name, userProfile.email]);
 
   // Preset Avatars for quick selection
   const presetAvatars = [
@@ -307,19 +325,19 @@ export const ProfileView: React.FC = () => {
         <div className="absolute bottom-0 left-10 w-40 h-40 bg-amber-400/5 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 space-y-4">
-          {/* Top Row: Avatar + Email + Tag Badge + Edit */}
+          {/* Top Row: Avatar + Student Name & Email + Tag Badges + Edit Button */}
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               {/* User Avatar with Gold Crown Badge on bottom-right */}
               <div className="relative shrink-0">
                 <div 
                   onClick={() => setIsAvatarPickerOpen(true)}
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-emerald-400/80 p-0.5 bg-slate-900/60 shadow-md cursor-pointer hover:opacity-90 transition-all overflow-hidden"
-                  title="ছবি পরিবর্তন করুন"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-emerald-400/90 p-0.5 bg-slate-900/70 shadow-lg cursor-pointer hover:opacity-90 transition-all overflow-hidden ring-2 ring-emerald-500/30"
+                  title="ছবি পরিবর্তন করতে ক্লিক করুন"
                 >
                   <img
                     src={userProfile.avatar || presetAvatars[0]}
-                    alt={userProfile.name}
+                    alt={displayName}
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>
@@ -330,18 +348,52 @@ export const ProfileView: React.FC = () => {
                 </div>
               </div>
 
-              {/* User Email & Verified Role Pill */}
-              <div className="min-w-0 flex-1 space-y-1">
+              {/* Student Name, Contact Info & Verified Role Pills */}
+              <div className="min-w-0 flex-1 space-y-1.5">
+                {/* 1. Student Name (Large & Prominent) with Verified Check */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <h2 className="text-sm sm:text-base font-extrabold text-white truncate tracking-wide">
-                    {userProfile.email || 'jobayer.tamreen@gmail.com'}
+                  <h2 className="text-base sm:text-lg md:text-xl font-black text-white truncate tracking-tight flex items-center gap-1.5">
+                    <span>{displayName}</span>
+                    <span title="ভেরিফাইড শিক্ষার্থী" className="inline-flex items-center">
+                      <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-emerald-300 fill-emerald-500/20 shrink-0" />
+                    </span>
                   </h2>
                 </div>
 
-                {/* Green Pill: ✓ সহকারী শিক্ষক (আরবি) */}
-                <div className="inline-flex items-center gap-1 bg-[#059669] hover:bg-[#047857] text-white px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold shadow-xs transition-colors">
-                  <Check className="w-3 h-3 text-emerald-200 stroke-[3]" />
-                  <span>{userProfile.batchTag || 'সহকারী শিক্ষক (আরবি)'}</span>
+                {/* 2. Email & Phone / Roll Number */}
+                <div className="flex items-center gap-2 text-xs text-emerald-100/90 truncate flex-wrap">
+                  {userProfile.email && (
+                    <span className="flex items-center gap-1 opacity-90 truncate max-w-[220px]">
+                      <Mail className="w-3 h-3 text-emerald-300 shrink-0" />
+                      <span className="truncate">{userProfile.email}</span>
+                    </span>
+                  )}
+                  {userProfile.phone && (
+                    <span className="hidden sm:flex items-center gap-1 opacity-80">
+                      <Phone className="w-3 h-3 text-emerald-300 shrink-0" />
+                      <span>{userProfile.phone}</span>
+                    </span>
+                  )}
+                  {userProfile.rollNo && (
+                    <span className="text-[10px] bg-emerald-950/60 px-1.5 py-0.5 rounded text-emerald-200 font-mono border border-emerald-500/30">
+                      {userProfile.rollNo}
+                    </span>
+                  )}
+                </div>
+
+                {/* 3. Batch Tag & Institution Pills */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <div className="inline-flex items-center gap-1 bg-[#059669] hover:bg-[#047857] text-white px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold shadow-xs transition-colors">
+                    <Check className="w-3 h-3 text-emerald-200 stroke-[3]" />
+                    <span>{userProfile.batchTag || 'সহকারী শিক্ষক (আরবি)'}</span>
+                  </div>
+
+                  {userProfile.institution && (
+                    <div className="hidden sm:inline-flex items-center gap-1 bg-white/10 hover:bg-white/15 text-emerald-100 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border border-white/10 truncate max-w-[200px]">
+                      <School className="w-3 h-3 text-amber-300 shrink-0" />
+                      <span className="truncate">{userProfile.institution}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -349,7 +401,7 @@ export const ProfileView: React.FC = () => {
             {/* Quick Profile Edit Action Button */}
             <button
               onClick={() => {
-                setEditName(userProfile.name || 'মুহাম্মদ জোবায়ের হোসাইন');
+                setEditName(userProfile.name || displayName);
                 setEditPhone(userProfile.phone || '০১৭৭২-৮৯৫৪০১');
                 setEditEmail(userProfile.email || 'jobayer.tamreen@gmail.com');
                 setEditRollNo(userProfile.rollNo || 'NTRCA-2026-9814');
@@ -360,16 +412,16 @@ export const ProfileView: React.FC = () => {
                 setEditBatchTag(userProfile.batchTag || 'সহকারী শিক্ষক (আরবি)');
                 setIsEditModalOpen(true);
               }}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center gap-1.5 text-xs font-bold border border-white/10 transition-all shrink-0 cursor-pointer"
-              title="প্রোফাইল এডিট"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center gap-1.5 text-xs font-bold border border-white/15 transition-all shrink-0 cursor-pointer shadow-xs"
+              title="প্রোফাইল তথ্য পরিবর্তন করুন"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-300" />
               <span className="hidden sm:inline">এডিট</span>
             </button>
           </div>
 
-          {/* Bottom Row: 3 Dark Green Metric Boxes (স্ট্রিক | সমাধান | লক্ষ্য) */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-1">
+          {/* Bottom Row: 4 Modern Glass-morphic Metric Boxes (স্ট্রিক | সমাধান | একুরেসি | লক্ষ্য) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 pt-1">
             {/* 1. স্ট্রিক */}
             <div 
               onClick={() => {
@@ -377,19 +429,22 @@ export const ProfileView: React.FC = () => {
                 updateUserProfile({ studyStreakDays: newStreak });
                 showToast(`🔥 অভিনন্দন! আপনার স্ট্রিক ${newStreak} দিনে উন্নীত হয়েছে!`);
               }}
-              className="bg-[#023324]/90 hover:bg-[#023d2b] border border-emerald-600/30 rounded-2xl p-2.5 sm:p-3 text-center transition-all cursor-pointer shadow-inner active:scale-98"
+              className="bg-[#023324]/90 hover:bg-[#023d2b] border border-emerald-600/35 rounded-2xl p-2.5 sm:p-3 text-center transition-all cursor-pointer shadow-inner active:scale-98 group"
             >
               <span className="text-[10px] sm:text-xs text-emerald-300/80 font-medium block">
                 স্ট্রিক
               </span>
               <span className="text-xs sm:text-sm font-black text-amber-300 flex items-center justify-center gap-1 mt-0.5">
-                <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-500 animate-pulse" />
+                <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-500 group-hover:scale-110 transition-transform animate-pulse" />
                 <span>{userProfile.studyStreakDays || 14} দিন</span>
               </span>
             </div>
 
             {/* 2. সমাধান */}
-            <div className="bg-[#023324]/90 border border-emerald-600/30 rounded-2xl p-2.5 sm:p-3 text-center shadow-inner">
+            <div 
+              onClick={() => setActiveSection('history')}
+              className="bg-[#023324]/90 hover:bg-[#023d2b] border border-emerald-600/35 rounded-2xl p-2.5 sm:p-3 text-center shadow-inner cursor-pointer transition-all"
+            >
               <span className="text-[10px] sm:text-xs text-emerald-300/80 font-medium block">
                 সমাধান
               </span>
@@ -398,13 +453,32 @@ export const ProfileView: React.FC = () => {
               </span>
             </div>
 
-            {/* 3. লক্ষ্য */}
-            <div className="bg-[#023324]/90 border border-emerald-600/30 rounded-2xl p-2.5 sm:p-3 text-center shadow-inner truncate">
+            {/* 3. নির্ভুলতা (Accuracy) */}
+            <div 
+              onClick={() => setActiveSection('dashboard')}
+              className="bg-[#023324]/90 hover:bg-[#023d2b] border border-emerald-600/35 rounded-2xl p-2.5 sm:p-3 text-center shadow-inner cursor-pointer transition-all"
+            >
+              <span className="text-[10px] sm:text-xs text-emerald-300/80 font-medium block">
+                একুরেসি
+              </span>
+              <span className="text-xs sm:text-sm font-black text-teal-200 block mt-0.5">
+                {accuracyRate}%
+              </span>
+            </div>
+
+            {/* 4. লক্ষ্য */}
+            <div 
+              onClick={() => {
+                setEditTargetExam(userProfile.targetExam || '১৯তম শিক্ষক নিবন্ধন প্রস্তুতি');
+                setIsEditModalOpen(true);
+              }}
+              className="bg-[#023324]/90 hover:bg-[#023d2b] border border-emerald-600/35 rounded-2xl p-2.5 sm:p-3 text-center shadow-inner truncate cursor-pointer transition-all"
+            >
               <span className="text-[10px] sm:text-xs text-emerald-300/80 font-medium block">
                 লক্ষ্য
               </span>
-              <span className="text-[11px] sm:text-xs font-black text-amber-200 block mt-0.5 truncate px-1">
-                {userProfile.targetExam || '১৯তম শিক্ষক নিবন্ধন প্রস্তুতি'}
+              <span className="text-[11px] sm:text-xs font-black text-amber-200 block mt-0.5 truncate px-1" title={userProfile.targetExam || '১৯তম শিক্ষক নিবন্ধন প্রস্তুতি'}>
+                {userProfile.targetExam || '১৯তম শিক্ষক নিবন্ধন'}
               </span>
             </div>
           </div>
@@ -719,46 +793,72 @@ export const ProfileView: React.FC = () => {
               <span>ব্যক্তিগত ও অ্যাকাডেমিক তথ্য</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1">
-                <span className="text-slate-400 font-medium block text-xs">পূর্ণ নাম</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.name}</strong>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs sm:text-sm">
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <User className="w-3.5 h-3.5 text-emerald-600" />
+                  পূর্ণ নাম
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">{displayName}</strong>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1">
-                <span className="text-slate-400 font-medium block text-xs">ইমেইল ঠিকানা</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.email}</strong>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                  ইমেইল ঠিকানা
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block truncate">{userProfile.email || 'jobayer.tamreen@gmail.com'}</strong>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1">
-                <span className="text-slate-400 font-medium block text-xs">মোবাইল নম্বর</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.phone}</strong>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  মোবাইল নম্বর
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">{userProfile.phone || '০১৭৭২-৮৯৫৪০১'}</strong>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1">
-                <span className="text-slate-400 font-medium block text-xs">রোল / রেজিস্ট্রেশন নম্বর</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.rollNo}</strong>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  রোল / আইডি নম্বর
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block font-mono">{userProfile.rollNo || 'NTRCA-2026-9814'}</strong>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1">
-                <span className="text-slate-400 font-medium block text-xs">শিক্ষাপ্রতিষ্ঠান</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.institution}</strong>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <School className="w-3.5 h-3.5 text-emerald-600" />
+                  শিক্ষাপ্রতিষ্ঠান
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">{userProfile.institution || 'সরকারি মাদ্রাসা-ই-আলিয়া, ঢাকা'}</strong>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1">
-                <span className="text-slate-400 font-medium block text-xs">নিজ জেলা</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.district || 'ঢাকা'}</strong>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  নিজ জেলা
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">{userProfile.district || 'ঢাকা'}</strong>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1 sm:col-span-2">
-                <span className="text-slate-400 font-medium block text-xs">টার্গেট পদ ও ব্যাচ</span>
-                <strong className="text-slate-800 dark:text-slate-100 text-sm font-bold block">{userProfile.targetExam} • {userProfile.batchTag}</strong>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 sm:col-span-2 border border-slate-100 dark:border-slate-800">
+                <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                  <GraduationCap className="w-3.5 h-3.5 text-emerald-600" />
+                  টার্গেট পদ ও ব্যাচ
+                </span>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">
+                  {userProfile.targetExam || '১৯তম শিক্ষক নিবন্ধন প্রস্তুতি'} • {userProfile.batchTag || 'সহকারী শিক্ষক (আরবি)'}
+                </strong>
               </div>
 
               {userProfile.bio && (
-                <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl space-y-1 sm:col-span-2">
-                  <span className="text-slate-400 font-medium block text-xs">ব্যক্তিগত লক্ষ্য ও উক্তি</span>
-                  <p className="text-slate-700 dark:text-slate-300 italic text-xs leading-relaxed">"{userProfile.bio}"</p>
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 sm:col-span-2 border border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    ব্যক্তিগত লক্ষ্য ও উক্তি
+                  </span>
+                  <p className="text-slate-700 dark:text-slate-300 italic text-xs sm:text-sm leading-relaxed">"{userProfile.bio}"</p>
                 </div>
               )}
             </div>
