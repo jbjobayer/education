@@ -223,6 +223,8 @@ export interface UserProfile {
   name: string;
   phone: string;
   email: string;
+  loginIdentifier?: string;
+  loginType?: 'email' | 'phone';
   rollNo: string;
   institution: string;
   targetExam: string;

@@ -156,6 +156,57 @@ export const ProfileView: React.FC = () => {
     return 'মুহাম্মদ জোবায়ের হোসাইন';
   }, [userProfile.name, userProfile.email]);
 
+  // Active login credential used by examinee (Phone or Email)
+  const loginCredential = useMemo(() => {
+    // 1. If explicit loginIdentifier is stored in profile
+    if (userProfile.loginIdentifier && userProfile.loginIdentifier.trim().length > 0) {
+      const val = userProfile.loginIdentifier.trim();
+      const isEmail = val.includes('@') && !val.includes('@tamreen.academy');
+      return {
+        type: isEmail ? 'email' as const : 'phone' as const,
+        value: val
+      };
+    }
+
+    // 2. Check localStorage saved login identifier
+    const localId = localStorage.getItem('tamreen_login_identifier');
+    if (localId && localId.trim().length > 0) {
+      const val = localId.trim();
+      const isEmail = val.includes('@') && !val.includes('@tamreen.academy');
+      return {
+        type: isEmail ? 'email' as const : 'phone' as const,
+        value: val
+      };
+    }
+
+    // 3. If explicit loginType is set
+    if (userProfile.loginType === 'phone' && userProfile.phone && userProfile.phone.trim().length > 0) {
+      return { type: 'phone' as const, value: userProfile.phone.trim() };
+    }
+    if (userProfile.loginType === 'email' && userProfile.email && !userProfile.email.includes('@tamreen.academy')) {
+      return { type: 'email' as const, value: userProfile.email.trim() };
+    }
+
+    // 4. If email is empty or synthetic (@tamreen.academy), show phone number
+    if (!userProfile.email || userProfile.email.includes('@tamreen.academy')) {
+      if (userProfile.phone && userProfile.phone.trim().length > 0) {
+        return { type: 'phone' as const, value: userProfile.phone.trim() };
+      }
+    }
+
+    // 5. If phone exists without real email
+    if (userProfile.phone && !userProfile.email) {
+      return { type: 'phone' as const, value: userProfile.phone.trim() };
+    }
+
+    // 6. If real email exists
+    if (userProfile.email && !userProfile.email.includes('@tamreen.academy')) {
+      return { type: 'email' as const, value: userProfile.email.trim() };
+    }
+
+    return { type: 'phone' as const, value: userProfile.phone || '০১৭৭২-৮৯৫৪০১' };
+  }, [userProfile.loginIdentifier, userProfile.loginType, userProfile.email, userProfile.phone]);
+
   // Preset Avatars for quick selection
   const presetAvatars = [
     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
@@ -281,10 +332,20 @@ export const ProfileView: React.FC = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    const updatedEmail = editEmail.trim() || userProfile.email;
+    const updatedPhone = editPhone.trim() || userProfile.phone;
+    const updatedLoginIdentifier = loginCredential.type === 'email' ? updatedEmail : updatedPhone;
+
+    if (updatedLoginIdentifier) {
+      localStorage.setItem('tamreen_login_identifier', updatedLoginIdentifier);
+    }
+
     updateUserProfile({
       name: editName.trim() || userProfile.name,
-      phone: editPhone.trim() || userProfile.phone,
-      email: editEmail.trim() || userProfile.email,
+      phone: updatedPhone,
+      email: updatedEmail,
+      loginIdentifier: updatedLoginIdentifier,
+      loginType: loginCredential.type,
       rollNo: editRollNo.trim() || userProfile.rollNo,
       institution: editInstitution.trim() || userProfile.institution,
       targetExam: editTargetExam.trim() || userProfile.targetExam,
@@ -360,20 +421,26 @@ export const ProfileView: React.FC = () => {
                   </h2>
                 </div>
 
-                {/* 2. Email & Phone / Roll Number */}
+                {/* 2. Login Identifier (Shows Phone or Email based on how the examinee logged in) */}
                 <div className="flex items-center gap-2 text-xs text-emerald-100/90 truncate flex-wrap">
-                  {userProfile.email && (
-                    <span className="flex items-center gap-1 opacity-90 truncate max-w-[220px]">
-                      <Mail className="w-3 h-3 text-emerald-300 shrink-0" />
-                      <span className="truncate">{userProfile.email}</span>
-                    </span>
-                  )}
-                  {userProfile.phone && (
-                    <span className="hidden sm:flex items-center gap-1 opacity-80">
-                      <Phone className="w-3 h-3 text-emerald-300 shrink-0" />
-                      <span>{userProfile.phone}</span>
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5 font-medium opacity-95 truncate max-w-[260px] bg-black/20 hover:bg-black/30 px-2 py-0.5 rounded-md border border-white/10 transition-colors">
+                    {loginCredential.type === 'phone' ? (
+                      <>
+                        <Phone className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300 shrink-0" />
+                        <span className="font-mono tracking-wide text-xs sm:text-[13px] font-semibold text-emerald-50">
+                          {loginCredential.value}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300 shrink-0" />
+                        <span className="truncate text-xs sm:text-[13px] font-medium text-emerald-50">
+                          {loginCredential.value}
+                        </span>
+                      </>
+                    )}
+                  </span>
+
                   {userProfile.rollNo && (
                     <span className="text-[10px] bg-emerald-950/60 px-1.5 py-0.5 rounded text-emerald-200 font-mono border border-emerald-500/30">
                       {userProfile.rollNo}
@@ -804,18 +871,22 @@ export const ProfileView: React.FC = () => {
 
               <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
-                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
-                  ইমেইল ঠিকানা
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  {loginCredential.type === 'phone' ? 'লগইন মোবাইল নম্বর' : 'মোবাইল নম্বর'}
                 </span>
-                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block truncate">{userProfile.email || 'jobayer.tamreen@gmail.com'}</strong>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">
+                  {userProfile.phone || (loginCredential.type === 'phone' ? loginCredential.value : '০১৭৭২-৮৯৫৪০১')}
+                </strong>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">
                 <span className="text-slate-400 font-medium flex items-center gap-1.5 text-xs">
-                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                  মোবাইল নম্বর
+                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                  {loginCredential.type === 'email' ? 'লগইন ইমেইল ঠিকানা' : 'ইমেইল ঠিকানা'}
                 </span>
-                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block">{userProfile.phone || '০১৭৭২-৮৯৫৪০১'}</strong>
+                <strong className="text-slate-900 dark:text-slate-100 text-sm font-bold block truncate">
+                  {(userProfile.email && !userProfile.email.includes('@tamreen.academy')) ? userProfile.email : (loginCredential.type === 'email' ? loginCredential.value : 'যুক্ত করা হয়নি')}
+                </strong>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-1 border border-slate-100 dark:border-slate-800">

@@ -1107,6 +1107,8 @@ export const supabaseService = {
           name: cleanName,
           email: isEmail ? displayIdentifier : '',
           phone: phone || (!isEmail ? displayIdentifier : ''),
+          loginIdentifier: displayIdentifier,
+          loginType: isEmail ? 'email' : 'phone',
           rollNo: `TAM-${Math.floor(1000 + Math.random() * 9000)}`,
           institution: institution || 'মাদ্রাসা / কলেজ',
           targetExam: '১৯তম শিক্ষক নিবন্ধন ও মডেল টেস্ট',
@@ -1141,6 +1143,8 @@ export const supabaseService = {
         // Save local session cache
         localStorage.setItem('tamreen_auth_uid', userId);
         localStorage.setItem('tamreen_is_logged_in', 'true');
+        localStorage.setItem('tamreen_login_identifier', displayIdentifier);
+        localStorage.setItem('tamreen_login_type', isEmail ? 'email' : 'phone');
         localStorage.setItem('tamreen_user_profile', JSON.stringify(profileData));
 
         return {
@@ -1161,6 +1165,8 @@ export const supabaseService = {
       name: cleanName,
       email: isEmail ? displayIdentifier : '',
       phone: phone || (!isEmail ? displayIdentifier : ''),
+      loginIdentifier: displayIdentifier,
+      loginType: isEmail ? 'email' : 'phone',
       rollNo: `TAM-${Math.floor(1000 + Math.random() * 9000)}`,
       institution: institution || 'মাদ্রাসা / কলেজ',
       targetExam: '১৯তম শিক্ষক নিবন্ধন ও মডেল টেস্ট',
@@ -1190,6 +1196,8 @@ export const supabaseService = {
 
     localStorage.setItem('tamreen_auth_uid', localUserId);
     localStorage.setItem('tamreen_is_logged_in', 'true');
+    localStorage.setItem('tamreen_login_identifier', displayIdentifier);
+    localStorage.setItem('tamreen_login_type', isEmail ? 'email' : 'phone');
     localStorage.setItem('tamreen_user_profile', JSON.stringify(localProfile));
 
     return {
@@ -1236,8 +1244,10 @@ export const supabaseService = {
             profile = {
               id: userId,
               name: userMeta.name || 'মুহাম্মদ শিক্ষার্থী',
-              email: isEmail ? displayIdentifier : (authData.user.email || ''),
-              phone: phone || userMeta.phone || '',
+              email: isEmail ? displayIdentifier : ((authData.user.email && !authData.user.email.includes('@tamreen.academy')) ? authData.user.email : ''),
+              phone: phone || userMeta.phone || (!isEmail ? displayIdentifier : ''),
+              loginIdentifier: displayIdentifier,
+              loginType: isEmail ? 'email' : 'phone',
               rollNo: `TAM-${Math.floor(1000 + Math.random() * 9000)}`,
               institution: userMeta.institution || 'মাদ্রাসা / কলেজ',
               targetExam: '১৯তম শিক্ষক নিবন্ধন ও মডেল টেস্ট',
@@ -1250,10 +1260,19 @@ export const supabaseService = {
               totalPoints: 100,
               isPremium: false
             };
+          } else {
+            profile = {
+              ...profile,
+              loginIdentifier: displayIdentifier,
+              loginType: isEmail ? 'email' : 'phone',
+              ...(isEmail ? { email: displayIdentifier } : { phone: displayIdentifier })
+            };
           }
 
           localStorage.setItem('tamreen_auth_uid', userId);
           localStorage.setItem('tamreen_is_logged_in', 'true');
+          localStorage.setItem('tamreen_login_identifier', displayIdentifier);
+          localStorage.setItem('tamreen_login_type', isEmail ? 'email' : 'phone');
           localStorage.setItem('tamreen_user_profile', JSON.stringify(profile));
 
           return {
@@ -1277,14 +1296,22 @@ export const supabaseService = {
       );
 
       if (match) {
+        const updatedProfile = {
+          ...match.profile,
+          loginIdentifier: displayIdentifier,
+          loginType: isEmail ? 'email' as const : 'phone' as const,
+          ...(isEmail ? { email: displayIdentifier } : { phone: displayIdentifier })
+        };
         localStorage.setItem('tamreen_auth_uid', match.id);
         localStorage.setItem('tamreen_is_logged_in', 'true');
-        localStorage.setItem('tamreen_user_profile', JSON.stringify(match.profile));
+        localStorage.setItem('tamreen_login_identifier', displayIdentifier);
+        localStorage.setItem('tamreen_login_type', isEmail ? 'email' : 'phone');
+        localStorage.setItem('tamreen_user_profile', JSON.stringify(updatedProfile));
 
         return {
           success: true,
-          message: `স্বাগতম, ${match.profile.name}! লগইন সফল হয়েছে।`,
-          user: match.profile,
+          message: `স্বাগতম, ${updatedProfile.name}! লগইন সফল হয়েছে।`,
+          user: updatedProfile,
           userId: match.id
         };
       }
@@ -1295,13 +1322,22 @@ export const supabaseService = {
     if (localProfileStr) {
       try {
         const saved = JSON.parse(localProfileStr);
-        if (saved && (saved.email === displayIdentifier || saved.phone === displayIdentifier || !saved.email)) {
+        if (saved && (saved.email === displayIdentifier || saved.phone === displayIdentifier || !saved.email || !saved.phone)) {
+          const updatedProfile = {
+            ...saved,
+            loginIdentifier: displayIdentifier,
+            loginType: isEmail ? 'email' as const : 'phone' as const,
+            ...(isEmail ? { email: displayIdentifier } : { phone: displayIdentifier })
+          };
           localStorage.setItem('tamreen_is_logged_in', 'true');
+          localStorage.setItem('tamreen_login_identifier', displayIdentifier);
+          localStorage.setItem('tamreen_login_type', isEmail ? 'email' : 'phone');
+          localStorage.setItem('tamreen_user_profile', JSON.stringify(updatedProfile));
           return {
             success: true,
-            message: `স্বাগতম, ${saved.name}! লগইন সফল হয়েছে।`,
-            user: saved,
-            userId: saved.id || 'usr_local'
+            message: `স্বাগতম, ${updatedProfile.name}! লগইন সফল হয়েছে।`,
+            user: updatedProfile,
+            userId: updatedProfile.id || 'usr_local'
           };
         }
       } catch {}
