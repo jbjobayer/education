@@ -135,6 +135,8 @@ export interface Exam {
   examType?: 'course_exam' | 'free_exam';
   courseId?: string;
   course_id?: string;
+  instructions?: string[];
+  passMarks?: number;
   authorName?: string;
   institution?: string;
   shareUrl?: string;

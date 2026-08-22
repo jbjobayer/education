@@ -11,9 +11,30 @@ import {
   EnrollmentStatus,
   CourseEnrollment 
 } from '../types';
-import { mockCourses, mockNotices, mockRoutines } from '../data/mockData';
+import { mockCourses, mockExams, mockNotices, mockRoutines } from '../data/mockData';
 import { supabaseService, getCurrentUserId } from '../services/supabaseService';
 import { isSupabaseConfigured, testSupabaseConnection, getSupabase } from '../lib/supabase';
+import { saveExamSubmissionToCache } from '../utils/leaderboardUtils';
+
+const DEFAULT_GUEST_PROFILE: UserProfile = {
+  name: 'পরীক্ষার্থী',
+  phone: '',
+  email: '',
+  rollNo: '',
+  institution: '',
+  targetExam: '১৯তম শিক্ষক নিবন্ধন প্রস্তুতি',
+  avatar: '',
+  bio: 'আত-তামরীন একাডেমির সাথে ১৯তম শিক্ষক নিবন্ধনে শতভাগ সাফল্য অর্জন করুন।',
+  district: '',
+  batchTag: 'পরীক্ষার্থী',
+  joinDate: '',
+  dailyGoalQuestions: 30,
+  soundEnabled: true,
+  hapticEnabled: true,
+  smsAlerts: true,
+  studyStreakDays: 1,
+  totalPoints: 0,
+};
 
 interface AppContextType {
   activeTab: MainTab;
@@ -83,7 +104,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<MainTab>('home');
   const [selectedCategory, setSelectedCategory] = useState<CourseCategory>('all');
   const [courses, setCourses] = useState<Course[]>(mockCourses);
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [exams, setExams] = useState<Exam[]>(mockExams);
   const [notices, setNotices] = useState<Notice[]>(mockNotices);
   const [routines, setRoutines] = useState<RoutineItem[]>(mockRoutines);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
@@ -157,25 +178,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Failed to parse user profile:', e);
       }
     }
-    return {
-      name: 'মুহাম্মদ আব্দুল্লাহ আল-মামুন',
-      phone: '০১৭৭২-৮৯৫৪০১',
-      email: 'abdullah.madrasah@gmail.com',
-      rollNo: 'NTRCA-2026-9814',
-      institution: 'সরকারি মাদ্রাসা-ই-আলিয়া, ঢাকা',
-      targetExam: '১৯তম শিক্ষক নিবন্ধন (প্রভাষক আরবি ও সহকারী মৌলভী)',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
-      bio: 'পরিশ্রম ও নিয়মানুবর্তিতার মাধ্যমে ১৯তম শিক্ষক নিবন্ধনে প্রথম সারিতে উত্তীর্ণ হওয়াই মূল লক্ষ্য। ইনশাআল্লাহ!',
-      district: 'ঢাকা',
-      batchTag: 'স্পেশাল গোল্ডেন ব্যাচ ২০২৬',
-      joinDate: 'জানুয়ারি ২০২৬',
-      dailyGoalQuestions: 30,
-      soundEnabled: true,
-      hapticEnabled: true,
-      smsAlerts: true,
-      studyStreakDays: 7,
-      totalPoints: 1450,
-    };
+    return DEFAULT_GUEST_PROFILE;
   });
 
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -272,7 +275,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabaseService.getCourseRoutines()
       ]);
 
-      setExams(remoteExams);
+      if (remoteExams && remoteExams.length > 0) {
+        setExams(remoteExams);
+      } else {
+        setExams(mockExams);
+      }
       if (remoteCourses && remoteCourses.length > 0) {
         setCourses(remoteCourses);
       }
@@ -355,12 +362,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isSupabaseConnected]);
 
   const handleSetActiveTab = (tab: MainTab) => {
+    setLandingExam(null);
     setViewingResult(null);
     setSelectedCourseDetails(null);
     setCheckoutCourse(null);
     setIsNotificationOpen(false);
     setIsRoutineOpen(false);
     setActiveTab(tab);
+    if (typeof window !== 'undefined' && window.history.pushState) {
+      const cleanUrl = window.location.pathname;
+      window.history.pushState({ path: cleanUrl }, '', cleanUrl);
+    }
   };
 
   const enrollInCourse = async (
@@ -440,16 +452,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
-    await supabaseService.logoutUser();
+    try {
+      await supabaseService.logoutUser();
+    } catch {}
     setIsLoggedIn(false);
+    setUserProfile(DEFAULT_GUEST_PROFILE);
+    setExamResults([]);
+    setViewingResult(null);
+    setLandingExam(null);
+    setSelectedCourseDetails(null);
+    setCheckoutCourse(null);
+    setParticipantInfo({ name: '', institution: '', phone: '' });
+    handleSetActiveTab('home');
+
+    // Thoroughly remove session storage keys
     localStorage.removeItem('tamreen_is_logged_in');
+    localStorage.removeItem('tamreen_user_profile');
+    localStorage.removeItem('tamreen_login_identifier');
+    localStorage.removeItem('tamreen_login_type');
+    localStorage.removeItem('tamreen_results');
+    localStorage.removeItem('tamreen_user_enrollments');
+    localStorage.removeItem('tamreen_guest_name');
+    localStorage.removeItem('tamreen_guest_institution');
+    localStorage.removeItem('tamreen_guest_phone');
+
     showToast('সফলভাবে লগআউট সম্পন্ন হয়েছে', 'info');
   };
 
   const startExam = (exam: Exam, participant?: { name?: string; institution?: string; phone?: string }) => {
-    const activeName = (isLoggedIn && userProfile.name) ? userProfile.name : (participant?.name || participantInfo.name || 'শিক্ষার্থী');
-    const activeInstitution = (isLoggedIn && userProfile.institution) ? userProfile.institution : (participant?.institution || participantInfo.institution || '');
-    const activePhone = (isLoggedIn && userProfile.phone) ? userProfile.phone : (participant?.phone || participantInfo.phone || '');
+    const activeName = (isLoggedIn && userProfile.name && userProfile.name !== 'পরীক্ষার্থী') 
+      ? userProfile.name 
+      : (participant?.name || participantInfo.name || '');
+    const activeInstitution = (isLoggedIn && userProfile.institution) 
+      ? userProfile.institution 
+      : (participant?.institution || participantInfo.institution || '');
+    const activePhone = (isLoggedIn && userProfile.phone) 
+      ? userProfile.phone 
+      : (participant?.phone || participantInfo.phone || '');
 
     setParticipantInfo({
       name: activeName,
@@ -464,9 +503,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveExamResult = async (result: ExamResult) => {
-    const finalParticipantName = (isLoggedIn && userProfile.name) ? userProfile.name : (result.participantName || participantInfo.name || 'শিক্ষার্থী');
-    const finalParticipantInstitution = (isLoggedIn && userProfile.institution) ? userProfile.institution : (result.participantInstitution || participantInfo.institution || '');
-    const finalParticipantPhone = (isLoggedIn && userProfile.phone) ? userProfile.phone : (result.participantPhone || participantInfo.phone || '');
+    const finalParticipantName = (isLoggedIn && userProfile.name && userProfile.name !== 'পরীক্ষার্থী') 
+      ? userProfile.name 
+      : (result.participantName || participantInfo.name || 'পরীক্ষার্থী');
+    const finalParticipantInstitution = (isLoggedIn && userProfile.institution) 
+      ? userProfile.institution 
+      : (result.participantInstitution || participantInfo.institution || '');
+    const finalParticipantPhone = (isLoggedIn && userProfile.phone) 
+      ? userProfile.phone 
+      : (result.participantPhone || participantInfo.phone || '');
 
     const enrichedResult: ExamResult = {
       ...result,
@@ -478,6 +523,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newResults = [enrichedResult, ...examResults];
     setExamResults(newResults);
     localStorage.setItem('tamreen_results', JSON.stringify(newResults));
+    
+    // Save to local cached submissions for real leaderboard rendering
+    saveExamSubmissionToCache(enrichedResult, userProfile);
+
     setViewingResult(enrichedResult);
     showToast('পরীক্ষা সফলভাবে সম্পন্ন হয়েছে!', 'success');
 

@@ -119,6 +119,7 @@ export const ProfileView: React.FC = () => {
   const [activeSection, setActiveSection] = useState<ProfileSection>('menu');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [selectedLeaderboardExamId, setSelectedLeaderboardExamId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -788,7 +789,7 @@ export const ProfileView: React.FC = () => {
           {/* 10. একাউন্ট অথেনটিকেশন / লগআউট বা লগইন বাটন */}
           {isLoggedIn ? (
             <div 
-              onClick={logout}
+              onClick={() => setIsLogoutModalOpen(true)}
               className="w-full bg-rose-50/70 hover:bg-rose-100/80 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-rose-200/80 dark:border-rose-800/60 shadow-[0_2px_8px_rgba(225,29,72,0.04)] flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.99]"
             >
               <div className="flex items-center gap-3.5 min-w-0">
@@ -1354,7 +1355,30 @@ export const ProfileView: React.FC = () => {
 
           {/* Render Isolated Leaderboard Entries List */}
           <div className="space-y-2.5">
-            {examLeaderboardEntries.map((entry) => {
+            {examLeaderboardEntries.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-100 dark:border-slate-800 text-center space-y-3 shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <h4 className="font-extrabold text-sm sm:text-base text-slate-800 dark:text-slate-200">
+                  এখনো কোনো মেধা তালিকা তৈরি হয়নি
+                </h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  এই পরীক্ষায় এখনো পর্যন্ত কোনো শিক্ষার্থী অংশগ্রহণ করেনি। প্রথম স্থান অর্জন করতে এখনই পরীক্ষা দিন!
+                </p>
+                {selectedLeaderboardExam && (
+                  <div className="pt-1">
+                    <button
+                      onClick={() => startExam(selectedLeaderboardExam)}
+                      className="px-4 py-2 rounded-xl bg-[#004d2e] hover:bg-[#003d25] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                    >
+                      পরীক্ষায় অংশ নিন
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              examLeaderboardEntries.map((entry) => {
               const isRank1 = entry.rank === 1;
               const isRank2 = entry.rank === 2;
               const isRank3 = entry.rank === 3;
@@ -1422,7 +1446,7 @@ export const ProfileView: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}
@@ -1878,6 +1902,46 @@ export const ProfileView: React.FC = () => {
                 className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
               >
                 বন্ধ করুন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 5. MODAL: LOGOUT CONFIRMATION */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 animate-scaleUp text-center">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-900 shadow-xs">
+              <LogOut className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-slate-100">
+                লগআউট নিশ্চিতকরণ
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                আপনি কি নিশ্চিত যে আপনি আপনার একাউন্ট থেকে লগআউট করতে চান?
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm transition-all cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsLogoutModalOpen(false);
+                  await logout();
+                }}
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-98 cursor-pointer"
+              >
+                হ্যাঁ, লগআউট করুন
               </button>
             </div>
           </div>
